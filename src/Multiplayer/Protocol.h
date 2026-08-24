@@ -18,10 +18,10 @@
 
 namespace PvzMultiplayer
 {
-	// Version 16 lets any player request host-ordered Crazy Dave progression,
-	// including the first Zen Garden tutorial.  Older peers must fail the
-	// handshake instead of disagreeing about the profile mutations it performs.
-	constexpr uint16_t PROTOCOL_VERSION = 16;
+	// Version 17 adds an explicit host-authoritative level-complete message.
+	// Older peers must fail the handshake instead of leaving a client parked on
+	// the final simulation tick when a local completion animation differs.
+	constexpr uint16_t PROTOCOL_VERSION = 17;
 	constexpr uint16_t DEFAULT_DISCOVERY_PORT = 43095;
 	constexpr uint16_t DEFAULT_GAME_PORT = 43096;
 	constexpr uint8_t MAX_PLAYERS = 4;
@@ -62,6 +62,7 @@ namespace PvzMultiplayer
 		SESSION_BEGIN,
 		TICK_SYNC,
 		STATE_HASH,
+		LEVEL_COMPLETE,
 		SESSION_END
 	};
 
@@ -288,8 +289,16 @@ namespace PvzMultiplayer
 		bool operator==(const StateHash&) const = default;
 	};
 
+	struct LevelComplete
+	{
+		uint64_t mHostTick{};
+		uint64_t mStartId{};
+
+		bool operator==(const LevelComplete&) const = default;
+	};
+
 	using Message = std::variant<DiscoveryQuery, DiscoveryOffer, Hello, Welcome, Reject, CursorUpdate,
-		GameAction, SessionStart, SessionReady, SessionBegin, TickSync, StateHash, SessionEnd>;
+		GameAction, SessionStart, SessionReady, SessionBegin, TickSync, StateHash, LevelComplete, SessionEnd>;
 
 	struct DecodeResult
 	{

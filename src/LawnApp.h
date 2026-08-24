@@ -164,6 +164,7 @@ public:
 	PlayerInfo*                     mLocalPlayerInfo{};
 	uint64_t                        mLanSimulationTick{};
 	uint64_t                        mLanTargetTick{};
+	std::optional<uint64_t>         mLanTerminalTick;
 	uint64_t                        mLanStartSerial{};
 	uint32_t                        mLanCursorSequence{};
 	uint32_t                        mLanActionSequence{};

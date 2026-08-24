@@ -1640,28 +1640,59 @@ bool LawnApp::UpdatePlayerProfileForFinishingLevel()
 
 void LawnApp::CheckForGameEnd()
 {
-	if (mBoard == nullptr || !mBoard->mLevelComplete)
+	if (mBoard == nullptr)
 		return;
 
-	// The regular host clock is sent every 100 simulation ticks.  A level can
-	// finish between those boundaries (for example at tick 60998), leaving the
-	// client parked forever on an almost-complete fade while the host has already
-	// constructed the award screen.  Publish the exact terminal tick before the
-	// board is destroyed so every client runs the remaining partial interval and
-	// reaches the same reward/plant-description screen locally.
-	if (mLanCoordinator && mLanSessionStart && mLanSessionBegun &&
-		mLanCoordinator->GetMode() == PvzMultiplayer::LanMode::HOSTING)
+	using namespace PvzMultiplayer;
+	const bool aLanClient = mLanCoordinator && mLanSessionStart && mLanSessionBegun &&
+		mLanCoordinator->GetMode() == LanMode::CONNECTED;
+	if (aLanClient)
 	{
-		PvzMultiplayer::TickSync aTerminalTick{
+		// A client never owns the board transition.  In particular, the 5-10
+		// completion flag can be raised by a presentation animation whose local
+		// allocation/timing differs even while the authoritative gameplay hash is
+		// identical.  Wait for the host's reliable terminal marker, finish the
+		// exact remaining ticks, then follow it even if that animation did not set
+		// mLevelComplete locally.
+		if (!mLanTerminalTick || mLanSimulationTick < *mLanTerminalTick)
+			return;
+		if (!mBoard->mLevelComplete)
+		{
+			LanTrace("client forced host level completion start=%llu tick=%llu\n",
+				static_cast<unsigned long long>(mLanSessionStart->mStartId),
+				static_cast<unsigned long long>(mLanSimulationTick));
+			mBoard->mLevelComplete = true;
+		}
+		else
+		{
+			LanTrace("client followed host level completion start=%llu tick=%llu\n",
+				static_cast<unsigned long long>(mLanSessionStart->mStartId),
+				static_cast<unsigned long long>(mLanSimulationTick));
+		}
+		mLanTerminalTick.reset();
+	}
+	else if (!mBoard->mLevelComplete)
+	{
+		return;
+	}
+
+	// Publish an explicit, reliable terminal marker before destroying the host
+	// board.  A plain TickSync only says how far to simulate; it cannot tell a
+	// client whose local completion animation did not fire to enter the reward
+	// screen once it reaches that tick.
+	if (mLanCoordinator && mLanSessionStart && mLanSessionBegun &&
+		mLanCoordinator->GetMode() == LanMode::HOSTING)
+	{
+		LevelComplete aTerminalLevel{
 			mLanSimulationTick, mLanSessionStart->mStartId};
-		if (!mLanCoordinator->BroadcastFromHost(aTerminalTick))
+		if (!mLanCoordinator->BroadcastFromHost(aTerminalLevel))
 		{
 			AbortLanSession("Could not synchronize the completed LAN level.");
 			return;
 		}
-		LanTrace("host terminal tick start=%llu tick=%llu\n",
-			static_cast<unsigned long long>(aTerminalTick.mStartId),
-			static_cast<unsigned long long>(aTerminalTick.mHostTick));
+		LanTrace("host level completion start=%llu tick=%llu\n",
+			static_cast<unsigned long long>(aTerminalLevel.mStartId),
+			static_cast<unsigned long long>(aTerminalLevel.mHostTick));
 	}
 
 	bool aUnlockedNewChallenge = UpdatePlayerProfileForFinishingLevel();
@@ -2658,6 +2689,30 @@ void LawnApp::UpdateLanSession()
 					HandleLanStateHashResult(mLanStateHashTimeline.ObserveRemote(
 						aHash->mHostTick, aHash->mHash, mLanSimulationTick));
 			}
+			else if (const auto* aComplete = std::get_if<LevelComplete>(&aMessage))
+			{
+				if (mLanSessionStart && aComplete->mStartId == mLanSessionStart->mStartId)
+				{
+					if (aComplete->mHostTick < mLanSimulationTick ||
+						(mLanTerminalTick && *mLanTerminalTick != aComplete->mHostTick))
+					{
+						LanTrace("client rejected invalid level completion start=%llu host=%llu local=%llu\n",
+							static_cast<unsigned long long>(aComplete->mStartId),
+							static_cast<unsigned long long>(aComplete->mHostTick),
+							static_cast<unsigned long long>(mLanSimulationTick));
+						mLanDesynchronized = true;
+					}
+					else
+					{
+						mLanTerminalTick = aComplete->mHostTick;
+						mLanTargetTick = std::max(mLanTargetTick, aComplete->mHostTick);
+						LanTrace("client received level completion start=%llu host=%llu local=%llu\n",
+							static_cast<unsigned long long>(aComplete->mStartId),
+							static_cast<unsigned long long>(aComplete->mHostTick),
+							static_cast<unsigned long long>(mLanSimulationTick));
+					}
+				}
+			}
 			else if (const auto* anEnd = std::get_if<SessionEnd>(&aMessage))
 			{
 				if (mLanSessionStart && anEnd->mStartId == mLanSessionStart->mStartId)
@@ -3042,6 +3097,7 @@ bool LawnApp::ApplyLanSessionStart(const PvzMultiplayer::SessionStart& theStart,
 	mLanActionTimeline.Reset();
 	mLanSimulationTick = 0;
 	mLanTargetTick = 0;
+	mLanTerminalTick.reset();
 	mLanWaitingForBegin = true;
 	mLanBarrierStartAppCounter = mAppCounter;
 	mLanSessionBegun = false;
@@ -3229,6 +3285,7 @@ void LawnApp::ResetLanGameState()
 	mLanStateHashTimeline.Reset();
 	mLanSimulationTick = 0;
 	mLanTargetTick = 0;
+	mLanTerminalTick.reset();
 	mLanWaitingForBegin = false;
 	mLanBarrierStartAppCounter = 0;
 	mLanSessionBegun = false;

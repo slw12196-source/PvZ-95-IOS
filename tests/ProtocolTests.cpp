@@ -45,7 +45,7 @@ namespace
 int main()
 {
 	using namespace PvzMultiplayer;
-	static_assert(PROTOCOL_VERSION == 16);
+	static_assert(PROTOCOL_VERSION == 17);
 	GameplayProfile aProfile;
 	aProfile.mProfileId = 17;
 	aProfile.mAdventureLevel = 34;
@@ -95,6 +95,7 @@ int main()
 	ExpectRoundTrip(SessionBegin{4590, 0x1020304050607080ULL});
 	ExpectRoundTrip(TickSync{4595, 0x1020304050607080ULL});
 	ExpectRoundTrip(StateHash{4600, 0x1020304050607080ULL, 0xDEADBEEFCAFEBABEULL});
+	ExpectRoundTrip(LevelComplete{4607, 0x1020304050607080ULL});
 	ExpectRoundTrip(SessionEnd{0x1020304050607080ULL});
 
 	ExpectDecodeError({}, CodecError::PACKET_TOO_SHORT);
@@ -200,6 +201,8 @@ int main()
 		Fail("invalid session profile flags encoded successfully");
 	if (Encode(Message(SessionReady{0, 1})))
 		Fail("zero session start ID encoded successfully");
+	if (Encode(Message(LevelComplete{1, 0})))
+		Fail("level completion with zero session ID encoded successfully");
 	if (Encode(Message(SessionEnd{0})))
 		Fail("zero session end ID encoded successfully");
 

@@ -121,7 +121,7 @@ namespace PvzMultiplayer
 			}
 			if (std::holds_alternative<SessionStart>(aMessage) || std::holds_alternative<SessionBegin>(aMessage) ||
 				std::holds_alternative<TickSync>(aMessage) || std::holds_alternative<StateHash>(aMessage) ||
-				std::holds_alternative<SessionEnd>(aMessage))
+				std::holds_alternative<LevelComplete>(aMessage) || std::holds_alternative<SessionEnd>(aMessage))
 			{
 				mMessages.push_back(std::move(aMessage));
 				continue;

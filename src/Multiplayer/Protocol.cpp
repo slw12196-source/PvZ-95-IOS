@@ -500,6 +500,13 @@ namespace PvzMultiplayer
 					theWriter.WriteU64(thePayload.mStartId);
 					theWriter.WriteU64(thePayload.mHash);
 				}
+				else if constexpr (std::is_same_v<Payload, LevelComplete>)
+				{
+					if (thePayload.mStartId == 0)
+						return false;
+					theWriter.WriteU64(thePayload.mHostTick);
+					theWriter.WriteU64(thePayload.mStartId);
+				}
 				else if constexpr (std::is_same_v<Payload, SessionEnd>)
 				{
 					if (thePayload.mStartId == 0)
@@ -536,6 +543,7 @@ namespace PvzMultiplayer
 			if constexpr (std::is_same_v<Payload, SessionBegin>) return MessageKind::SESSION_BEGIN;
 			if constexpr (std::is_same_v<Payload, TickSync>) return MessageKind::TICK_SYNC;
 			if constexpr (std::is_same_v<Payload, StateHash>) return MessageKind::STATE_HASH;
+			if constexpr (std::is_same_v<Payload, LevelComplete>) return MessageKind::LEVEL_COMPLETE;
 			return MessageKind::SESSION_END;
 		}, theMessage);
 	}
@@ -710,6 +718,14 @@ namespace PvzMultiplayer
 			StateHash aMessage;
 			if (!aReader.ReadU64(aMessage.mHostTick) || !aReader.ReadU64(aMessage.mStartId) ||
 				!aReader.ReadU64(aMessage.mHash) || aMessage.mStartId == 0)
+				break;
+			return FinishDecode(aReader, std::move(aMessage));
+		}
+		case MessageKind::LEVEL_COMPLETE:
+		{
+			LevelComplete aMessage;
+			if (!aReader.ReadU64(aMessage.mHostTick) || !aReader.ReadU64(aMessage.mStartId) ||
+				aMessage.mStartId == 0)
 				break;
 			return FinishDecode(aReader, std::move(aMessage));
 		}

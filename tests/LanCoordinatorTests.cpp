@@ -163,6 +163,21 @@ int main()
 	if (aMessages.size() != 1 || aMessages.front() != Message{aNextBegin})
 		Fail("coordinator client did not receive replacement session begin");
 
+	LevelComplete aComplete{8765, aNextStart.mStartId};
+	if (!aHost.BroadcastFromHost(aComplete))
+		Fail("coordinator failed to broadcast level completion");
+	aMessages.clear();
+	aDeadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+	while (std::chrono::steady_clock::now() < aDeadline && aMessages.empty())
+	{
+		aHost.Poll();
+		aClient.Poll();
+		aMessages = aClient.TakeClientMessages();
+		std::this_thread::sleep_for(std::chrono::milliseconds(2));
+	}
+	if (aMessages.size() != 1 || aMessages.front() != Message{aComplete})
+		Fail("coordinator client did not receive level completion");
+
 	SessionEnd anEnd{aNextStart.mStartId};
 	if (!aHost.BroadcastFromHost(anEnd))
 		Fail("coordinator failed to broadcast session end");
