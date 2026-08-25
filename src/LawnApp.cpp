@@ -2536,6 +2536,7 @@ void LawnApp::UpdateLanSession()
 		{
 			std::string aMessage = mLanCoordinator->GetStatusText() +
 				"\n\nLocal version: " + mProductVersion +
+				"\nSelected ruleset: " + std::string(PvzRules::GetActiveRulesetDisplayName()) +
 				"\nAll players must use the same release and ruleset.";
 			LawnMessageBox(Dialogs::DIALOG_MESSAGE, "LAN CONNECTION FAILED", aMessage.c_str(),
 				"[DIALOG_BUTTON_OK]", "", Dialog::BUTTONS_FOOTER);
@@ -3917,7 +3918,8 @@ void LawnApp::LoadingCompleted()
 	if (!PvzMultiplayer::IsValidDisplayName(aPlayerName, PvzMultiplayer::MAX_PLAYER_NAME_LENGTH))
 		aPlayerName = mAutoHostLan ? "Host" : "Guest";
 	if (mAutoHostLan)
-		mLanCoordinator->StartHosting("PvZ 95 LAN", aPlayerName, PvzRules::GetActiveRulesetProtocolId());
+		mLanCoordinator->StartHosting(std::string(PvzRules::GetActiveRulesetDisplayName()) + " LAN",
+			aPlayerName, PvzRules::GetActiveRulesetProtocolId());
 	else if (mAutoJoinLan)
 	{
 		std::optional<PvzMultiplayer::Ipv4Endpoint> aDiscoveryEndpoint;

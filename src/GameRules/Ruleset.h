@@ -7,6 +7,7 @@
 #pragma once
 
 #include "ConstEnums.h"
+#include "RulesetCatalog.h"
 
 #include <cstdint>
 #include <string_view>
@@ -15,12 +16,6 @@ enum MusicTune : int32_t;
 
 namespace PvzRules
 {
-	enum class RulesetId : uint8_t
-	{
-		ORIGINAL,
-		PVZ95
-	};
-
 	struct PlantTuning
 	{
 		int mSeedCost{-1};
@@ -146,6 +141,7 @@ namespace PvzRules
 	void SetActiveRuleset(RulesetId theRuleset);
 	bool SetActiveRuleset(std::string_view theName);
 	std::string_view GetActiveRulesetName();
+	std::string_view GetActiveRulesetDisplayName();
 	uint32_t GetActiveRulesetProtocolId();
 	std::string_view ResolveApplicationTitle(std::string_view theOriginalValue);
 

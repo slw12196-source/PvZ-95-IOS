@@ -198,6 +198,9 @@ GameSelector::GameSelector(LawnApp* theApp)
 	mAutoSearchLanButton = MakeButton(GameSelector::GameSelector_AutoSearchLan, this, "Auto Search");
 	mAutoSearchLanButton->Resize(473, 515, 130, 33);
 	mAutoSearchLanButton->mMouseVisible = false;
+	mRulesetButton = MakeButton(GameSelector::GameSelector_Ruleset, this, "Ruleset: PvZ 95");
+	mRulesetButton->Resize(263, 555, 270, 33);
+	mRulesetButton->mMouseVisible = false;
 
 	mZenGardenButton = MakeNewButton(
 		GameSelector::GameSelector_ZenGarden,
@@ -386,6 +389,7 @@ GameSelector::GameSelector(LawnApp* theApp)
 	AddWidget(mHelpButton);
 	AddWidget(mStoreButton);
 	AddWidget(mAlmanacButton);
+	AddWidget(mRulesetButton);
 	AddWidget(mOverlayWidget);
 
 	PvzpHesitationTrace("gameselectorinit");
@@ -626,14 +630,6 @@ void GameSelector::Draw(Graphics* g)
 
 	}
 
-	if (mApp->mLanCoordinator->GetMode() != PvzMultiplayer::LanMode::OFFLINE)
-	{
-		g->SetFont(Sexy::FONT_BRIANNETOD16);
-		g->SetColor(Color(48, 30, 16));
-		g->WriteWordWrapped(Rect(193, 475, 560, 36),
-			mApp->mLanCoordinator->GetStatusText(),
-			Sexy::FONT_BRIANNETOD16->GetLineSpacing(), -1);
-	}
 }
 
 void GameSelector::DrawOverlay(Graphics* g)
@@ -739,6 +735,17 @@ void GameSelector::DrawOverlay(Graphics* g)
 	}
 
 	mToolTip->Draw(g);
+
+	// The overlay widget is the top-most child. Drawing the LAN status here keeps
+	// the almanac book and other selector art from covering connection feedback.
+	if (mApp->mLanCoordinator->GetMode() != PvzMultiplayer::LanMode::OFFLINE)
+	{
+		g->SetFont(Sexy::FONT_BRIANNETOD16);
+		g->SetColor(Color(48, 30, 16));
+		g->WriteWordWrapped(Rect(193, 475, 560, 34),
+			mApp->mLanCoordinator->GetStatusText(),
+			Sexy::FONT_BRIANNETOD16->GetLineSpacing(), -1);
+	}
 }
 
 void GameSelector::UpdateTooltip()
@@ -879,6 +886,7 @@ void GameSelector::Update()
 			mHostLanButton->mMouseVisible = true;
 			mJoinLanButton->mMouseVisible = true;
 			mAutoSearchLanButton->mMouseVisible = true;
+			mRulesetButton->mMouseVisible = true;
 
 			if (mApp->mPlayerInfo == nullptr)
 			{
@@ -995,6 +1003,10 @@ void GameSelector::Update()
 	mAutoSearchLanButton->SetLabel(
 		aLanMode == PvzMultiplayer::LanMode::SEARCHING || aLanMode == PvzMultiplayer::LanMode::JOINING ||
 		aLanMode == PvzMultiplayer::LanMode::CONNECTED ? "Disconnect" : "Auto Search");
+	const bool aCanChangeRuleset = !mStartingGame &&
+		(aLanMode == PvzMultiplayer::LanMode::OFFLINE || aLanMode == PvzMultiplayer::LanMode::FAILED);
+	mRulesetButton->SetLabel("Ruleset: " + std::string(PvzRules::GetActiveRulesetDisplayName()));
+	mRulesetButton->SetDisabled(!aCanChangeRuleset);
 	aSelectorReanim->SetImageOverride("woodsign2", (mChangeUserButton->mIsOver || mChangeUserButton->mIsDown) ? Sexy::IMAGE_REANIM_SELECTORSCREEN_WOODSIGN2_PRESS : nullptr);
 	aSelectorReanim->SetImageOverride("woodsign3", (mZombatarButton->mIsOver || mZombatarButton->mIsDown) ? Sexy::IMAGE_REANIM_SELECTORSCREEN_WOODSIGN3_PRESS : nullptr);
 }
@@ -1243,6 +1255,7 @@ void GameSelector::ClickedAdventure()
 	mHostLanButton->SetDisabled(true);
 	mJoinLanButton->SetDisabled(true);
 	mAutoSearchLanButton->SetDisabled(true);
+	mRulesetButton->SetDisabled(true);
 
 	Reanimation* aHandReanim = mApp->AddReanimation(-70.0f, 10.0f, 0, ReanimationType::REANIM_ZOMBIE_HAND);
 	aHandReanim->mLoopType = ReanimLoopType::REANIM_PLAY_ONCE_AND_HOLD;
@@ -1262,6 +1275,25 @@ void GameSelector::ButtonDepress(int theId)
 {
 	if (mSlideCounter > 0)
 		return;
+	if (theId == GameSelector::GameSelector_Ruleset)
+	{
+		const PvzMultiplayer::LanMode aMode = mApp->mLanCoordinator->GetMode();
+		if (mStartingGame || (aMode != PvzMultiplayer::LanMode::OFFLINE && aMode != PvzMultiplayer::LanMode::FAILED))
+			return;
+		if (aMode == PvzMultiplayer::LanMode::FAILED)
+			mApp->mLanCoordinator->Stop();
+		const int aResult = mApp->LawnMessageBox(
+			Dialogs::DIALOG_MESSAGE,
+			"SELECT RULESET",
+			("Current ruleset: " + std::string(PvzRules::GetActiveRulesetDisplayName()) +
+				"\n\nEveryone in a LAN room must select the same ruleset.").c_str(),
+			"PvZ 95",
+			"Original",
+			Dialog::BUTTONS_YES_NO);
+		PvzRules::SetActiveRuleset(aResult == Dialog::ID_YES ?
+			PvzRules::RulesetId::PVZ95 : PvzRules::RulesetId::ORIGINAL);
+		return;
+	}
 	if (PvzMultiplayer::IsLanClientWaitingForHost(mApp->mLanCoordinator->GetMode()) &&
 		theId != GameSelector::GameSelector_JoinLan &&
 		theId != GameSelector::GameSelector_AutoSearchLan)
@@ -1354,7 +1386,8 @@ void GameSelector::ButtonDepress(int theId)
 				mApp->mPlayerInfo->mName : "Host";
 			if (!PvzMultiplayer::IsValidDisplayName(aPlayerName, PvzMultiplayer::MAX_PLAYER_NAME_LENGTH))
 				aPlayerName = "Host";
-			mApp->mLanCoordinator->StartHosting("PvZ 95 LAN", aPlayerName, PvzRules::GetActiveRulesetProtocolId());
+			mApp->mLanCoordinator->StartHosting(std::string(PvzRules::GetActiveRulesetDisplayName()) + " LAN",
+				aPlayerName, PvzRules::GetActiveRulesetProtocolId());
 		}
 		break;
 	case GameSelector::GameSelector_JoinLan:

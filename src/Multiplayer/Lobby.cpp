@@ -6,6 +6,7 @@
 
 #include "Lobby.h"
 #include "SharedInputState.h"
+#include "../GameRules/RulesetCatalog.h"
 
 #include <algorithm>
 #include <utility>
@@ -58,7 +59,13 @@ namespace PvzMultiplayer
 		if (theHello.mClientNonce == 0)
 			return MakeReject(RejectReason::INVALID_REQUEST, "Client nonce must not be zero");
 		if (theHello.mRulesetId != mConfig.mRulesetId)
-			return MakeReject(RejectReason::RULESET_MISMATCH, "The host is using a different ruleset");
+		{
+			return MakeReject(RejectReason::RULESET_MISMATCH,
+				"Ruleset mismatch: host uses " +
+				std::string(PvzRules::GetRulesetDisplayName(mConfig.mRulesetId)) +
+				", client selected " +
+				std::string(PvzRules::GetRulesetDisplayName(theHello.mRulesetId)));
+		}
 		if (!IsValidDisplayName(theHello.mPlayerName, MAX_PLAYER_NAME_LENGTH))
 			return MakeReject(RejectReason::INVALID_NAME, "Player name is invalid");
 

@@ -5,6 +5,7 @@
  */
 
 #include "LanCoordinator.h"
+#include "../GameRules/RulesetCatalog.h"
 
 #include <atomic>
 #include <iterator>
@@ -23,7 +24,8 @@ namespace PvzMultiplayer
 			case RejectReason::PROTOCOL_MISMATCH:
 				return "Game version mismatch. Every player must use the same PvZ 95 Co-op release.";
 			case RejectReason::RULESET_MISMATCH:
-				return "Ruleset mismatch. Every player must select the same ruleset and game release.";
+				return (theReject.mMessage.empty() ? std::string("Ruleset mismatch") : theReject.mMessage) +
+					". Every player must select the same ruleset and game release.";
 			default:
 				return theReject.mMessage.empty() ? "The host rejected the connection" : theReject.mMessage;
 			}
@@ -123,7 +125,8 @@ namespace PvzMultiplayer
 		mRulesetId = theRulesetId;
 		mLastDiscoveryQuery = std::chrono::steady_clock::now();
 		mMode = LanMode::SEARCHING;
-		mStatusText = "Searching for a PvZ 95 LAN room...";
+		mStatusText = "Searching for a " + std::string(PvzRules::GetRulesetDisplayName(theRulesetId)) +
+			" LAN room...";
 		return true;
 	}
 
@@ -166,7 +169,10 @@ namespace PvzMultiplayer
 			{
 				if (aSession.mOffer.mRulesetId != mRulesetId)
 				{
-					mStatusText = "Found an incompatible LAN room. Use the same game version and ruleset.";
+					mStatusText = "Ruleset mismatch: room uses " +
+						std::string(PvzRules::GetRulesetDisplayName(aSession.mOffer.mRulesetId)) +
+						", you selected " + std::string(PvzRules::GetRulesetDisplayName(mRulesetId)) +
+						". Select the same ruleset to join.";
 					continue;
 				}
 				if (aSession.mOffer.mPlayerCount >= aSession.mOffer.mMaxPlayers)

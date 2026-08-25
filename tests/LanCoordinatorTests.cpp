@@ -44,7 +44,7 @@ int main()
 		Fail("LAN lifecycle authority classification is incorrect");
 
 	LanCoordinator aHost;
-	if (!aHost.StartHosting("Test Garden", "Host", 0x50563935, 0))
+	if (!aHost.StartHosting("Test Garden", "Host", 0x50393532, 0))
 		Fail("coordinator host failed: " + aHost.GetStatusText());
 	uint16_t aHostGamePort = aHost.GetHostSession().GetLocalPort();
 	if (aHostGamePort == 0 ||
@@ -52,7 +52,7 @@ int main()
 		Fail("coordinator host status did not show its actual TCP game port");
 
 	LanCoordinator aClient;
-	if (!aClient.StartJoining("Guest", 0x50563935, Ipv4Endpoint::Loopback(DEFAULT_DISCOVERY_PORT)))
+	if (!aClient.StartJoining("Guest", 0x50393532, Ipv4Endpoint::Loopback(DEFAULT_DISCOVERY_PORT)))
 		Fail("coordinator client failed: " + aClient.GetStatusText());
 
 	auto aDeadline = std::chrono::steady_clock::now() + std::chrono::seconds(3);
@@ -268,7 +268,7 @@ int main()
 
 	LanCoordinator aDirectClient;
 	Ipv4Endpoint aDirectEndpoint = Ipv4Endpoint::Loopback(aHostGamePort);
-	if (!aDirectClient.StartDirectJoining("Direct Guest", 0x50563935, aDirectEndpoint))
+	if (!aDirectClient.StartDirectJoining("Direct Guest", 0x50393532, aDirectEndpoint))
 		Fail("direct coordinator client failed: " + aDirectClient.GetStatusText());
 	if (aDirectClient.GetMode() != LanMode::JOINING ||
 		aDirectClient.GetStatusText().find("127.0.0.1:" + std::to_string(aHostGamePort)) == std::string::npos)
@@ -302,7 +302,7 @@ int main()
 		Fail("coordinator host did not observe the direct client leaving");
 
 	LanCoordinator aWrongRulesetClient;
-	if (!aWrongRulesetClient.StartDirectJoining("Wrong Rules", 0x12345678, aDirectEndpoint))
+	if (!aWrongRulesetClient.StartDirectJoining("Wrong Rules", 0x4F524947, aDirectEndpoint))
 		Fail("ruleset mismatch client failed before the handshake: " +
 			aWrongRulesetClient.GetStatusText());
 	aDeadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
@@ -315,12 +315,14 @@ int main()
 	}
 	if (aWrongRulesetClient.GetMode() != LanMode::FAILED ||
 		aWrongRulesetClient.GetStatusText().find("Ruleset mismatch") == std::string::npos ||
+		aWrongRulesetClient.GetStatusText().find("PvZ 95") == std::string::npos ||
+		aWrongRulesetClient.GetStatusText().find("Original") == std::string::npos ||
 		aWrongRulesetClient.GetStatusText().find("same ruleset and game release") == std::string::npos)
 		Fail("ruleset mismatch did not produce an actionable user-facing error: " +
 			aWrongRulesetClient.GetStatusText());
 
 	LanCoordinator anInvalidDirectClient;
-	if (anInvalidDirectClient.StartDirectJoining("Guest", 0x50563935, Ipv4Endpoint::Loopback(0)) ||
+	if (anInvalidDirectClient.StartDirectJoining("Guest", 0x50393532, Ipv4Endpoint::Loopback(0)) ||
 		anInvalidDirectClient.GetMode() != LanMode::FAILED)
 		Fail("direct coordinator accepted an invalid zero game port");
 

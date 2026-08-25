@@ -221,6 +221,14 @@ int main()
 	ExpectEqual("maximum special seed immediate", static_cast<int>(SEED_ZOMBIE_IMP), 74);
 
 	SetActiveRuleset(RulesetId::ORIGINAL);
+	if (RULESET_CATALOG.size() != static_cast<size_t>(RulesetId::COUNT))
+		return 1;
+	if (FindRulesetDescriptor(RulesetId::ORIGINAL) == nullptr ||
+		FindRulesetDescriptor(RulesetId::PVZ95) == nullptr ||
+		FindRulesetDescriptor(0x4F524947) == nullptr ||
+		FindRulesetDescriptor(0x50393532) == nullptr)
+		return 1;
+	ExpectStringEqual("original ruleset display name", GetActiveRulesetDisplayName(), "Original");
 	ExpectEqual("original ruleset protocol", static_cast<int>(GetActiveRulesetProtocolId()), 0x4F524947);
 	ExpectStringEqual("original application title passthrough",
 		ResolveApplicationTitle("PvZ 95 Co-op"), "PvZ 95 Co-op");
@@ -463,6 +471,7 @@ int main()
 
 	if (!SetActiveRuleset("pvz95"))
 		return 1;
+	ExpectStringEqual("PvZ 95 ruleset display name", GetActiveRulesetDisplayName(), "PvZ 95");
 	ExpectEqual("PvZ 95 ruleset protocol", static_cast<int>(GetActiveRulesetProtocolId()), 0x50393532);
 	ExpectStringEqual("PvZ 95 application title",
 		ResolveApplicationTitle("PvZ 95 Co-op"), "PlantsVsZombies Plus Version 95");

@@ -66,7 +66,8 @@ private:
 		GameSelector_Achievements,
 		GameSelector_HostLan,
 		GameSelector_JoinLan,
-		GameSelector_AutoSearchLan
+		GameSelector_AutoSearchLan,
+		GameSelector_Ruleset
 	};
 
 public:
@@ -87,6 +88,7 @@ public:
 	LawnStoneButton*            mHostLanButton;
 	LawnStoneButton*            mJoinLanButton;
 	LawnStoneButton*            mAutoSearchLanButton;
+	LawnStoneButton*            mRulesetButton;
 	Widget*                     mOverlayWidget;
 	bool                        mStartingGame;
 	int                         mStartingGameCounter;

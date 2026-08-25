@@ -14,9 +14,6 @@ namespace PvzRules
 {
 	namespace
 	{
-		constexpr uint32_t RULESET_PROTOCOL_ORIGINAL = 0x4F524947; // ORIG
-		constexpr uint32_t RULESET_PROTOCOL_PVZ95 = 0x50393532;    // P952
-
 		RulesetId gActiveRuleset = RulesetId::PVZ95;
 
 		const std::array<PlantTuning, static_cast<size_t>(SeedType::NUM_SEED_TYPES)> gPvZ95PlantTuning = []
@@ -77,33 +74,39 @@ namespace PvzRules
 
 	void SetActiveRuleset(RulesetId theRuleset)
 	{
-		gActiveRuleset = theRuleset;
+		if (FindRulesetDescriptor(theRuleset))
+			gActiveRuleset = theRuleset;
 	}
 
 	bool SetActiveRuleset(std::string_view theName)
 	{
-		if (theName == "original")
+		for (const RulesetDescriptor& aDescriptor : RULESET_CATALOG)
 		{
-			SetActiveRuleset(RulesetId::ORIGINAL);
-			return true;
+			if (theName == aDescriptor.mKey)
+			{
+				SetActiveRuleset(aDescriptor.mId);
+				return true;
+			}
 		}
-		if (theName == "pvz95" || theName == "95")
-		{
-			SetActiveRuleset(RulesetId::PVZ95);
-			return true;
-		}
+		if (theName == "95")
+			return SetActiveRuleset("pvz95");
 
 		return false;
 	}
 
 	std::string_view GetActiveRulesetName()
 	{
-		return gActiveRuleset == RulesetId::PVZ95 ? "pvz95" : "original";
+		return FindRulesetDescriptor(gActiveRuleset)->mKey;
+	}
+
+	std::string_view GetActiveRulesetDisplayName()
+	{
+		return FindRulesetDescriptor(gActiveRuleset)->mDisplayName;
 	}
 
 	uint32_t GetActiveRulesetProtocolId()
 	{
-		return gActiveRuleset == RulesetId::PVZ95 ? RULESET_PROTOCOL_PVZ95 : RULESET_PROTOCOL_ORIGINAL;
+		return FindRulesetDescriptor(gActiveRuleset)->mProtocolId;
 	}
 
 	std::string_view ResolveApplicationTitle(std::string_view theOriginalValue)
