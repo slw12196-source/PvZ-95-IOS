@@ -18,9 +18,9 @@
 
 namespace PvzMultiplayer
 {
-	// Version 18 synchronizes the host's automatic-grave preference so all peers
-	// make the same wave-time grave-generation decisions.
-	constexpr uint16_t PROTOCOL_VERSION = 18;
+	// Version 19 restores Whack-a-Zombie initial graves.  Older peers construct
+	// a different starting board and must be rejected before a session begins.
+	constexpr uint16_t PROTOCOL_VERSION = 19;
 	constexpr uint16_t DEFAULT_DISCOVERY_PORT = 43095;
 	constexpr uint16_t DEFAULT_GAME_PORT = 43096;
 	constexpr uint8_t MAX_PLAYERS = 4;

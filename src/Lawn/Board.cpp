@@ -8841,7 +8841,8 @@ bool Board::StageHasGraveStones()
 		return false;
 
 	if (PvzRules::ShouldRejectStageHasGraveStonesAtPogoGate(mApp->mGameMode,
-		mApp->mGameMode == GameMode::GAMEMODE_CHALLENGE_POGO_PARTY))
+		mApp->mGameMode == GameMode::GAMEMODE_CHALLENGE_POGO_PARTY,
+		mApp->IsWhackAZombieLevel()))
 		return false;
 
 	if (mApp->mGameMode == GameMode::GAMEMODE_CHALLENGE_BEGHOULED ||

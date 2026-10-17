@@ -436,6 +436,11 @@ int main()
 				ShouldRejectStageHasGraveStonesAtPogoGate(aGameMode, anOriginalValue), anOriginalValue);
 		}
 	}
+	for (GameMode aWhackMode : {GAMEMODE_ADVENTURE, GAMEMODE_CHALLENGE_WHACK_A_ZOMBIE})
+	{
+		ExpectEqual("original Whack initial grave gate permits level setup",
+			ShouldRejectStageHasGraveStonesAtPogoGate(aWhackMode, false, true), false);
+	}
 	for (bool aStageHasGraveStones : {false, true})
 	{
 		for (bool anOriginalValue : {false, true})
@@ -891,6 +896,11 @@ int main()
 			ExpectEqual("PvZ 95 StageHasGraveStones forced rejection",
 				ShouldRejectStageHasGraveStonesAtPogoGate(aGameMode, anOriginalValue), true);
 		}
+	}
+	for (GameMode aWhackMode : {GAMEMODE_ADVENTURE, GAMEMODE_CHALLENGE_WHACK_A_ZOMBIE})
+	{
+		ExpectEqual("PvZ 95 Whack initial grave gate permits level setup",
+			ShouldRejectStageHasGraveStonesAtPogoGate(aWhackMode, false, true), false);
 	}
 	for (bool aStageHasGraveStones : {false, true})
 	{

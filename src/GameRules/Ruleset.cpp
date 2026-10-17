@@ -1178,9 +1178,15 @@ namespace PvzRules
 			IsPvZ95ScaryPotterExpandedMode(theGameMode) : theOriginalValue;
 	}
 
-	bool ShouldRejectStageHasGraveStonesAtPogoGate(GameMode theGameMode, bool theOriginalValue)
+	bool ShouldRejectStageHasGraveStonesAtPogoGate(GameMode theGameMode, bool theOriginalValue,
+		bool theIsWhackAZombieLevel)
 	{
 		(void)theGameMode;
+		// Whack-a-Zombie needs its initial graves as zombie spawn points, including
+		// Adventure 2-5 where the game mode itself is still ADVENTURE.  These are
+		// level setup, independent of the automatic wave-time grave preference.
+		if (theIsWhackAZombieLevel)
+			return false;
 		return gActiveRuleset == RulesetId::PVZ95 ? true : theOriginalValue;
 	}
 
