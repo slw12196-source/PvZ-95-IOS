@@ -48,6 +48,7 @@ protected:
 		NewOptionsDialog_SoundVolume,
 		NewOptionsDialog_Fullscreen,
 		NewOptionsDialog_HardwareAcceleration,
+		NewOptionsDialog_AutoGenerateGraves,
 	};
 
 public:
@@ -56,6 +57,7 @@ public:
 	Sexy::Slider*			mSfxVolumeSlider;
 	Sexy::Checkbox*			mFullscreenCheckbox;
 	Sexy::Checkbox*			mHardwareAccelerationCheckbox;
+	Sexy::Checkbox*         mAutoGenerateGravesCheckbox;
 	LawnStoneButton*		mAlmanacButton;
 	LawnStoneButton*		mBackToMainButton;
 	LawnStoneButton*		mRestartButton;

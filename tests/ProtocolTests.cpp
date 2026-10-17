@@ -45,13 +45,14 @@ namespace
 int main()
 {
 	using namespace PvzMultiplayer;
-	static_assert(PROTOCOL_VERSION == 17);
+	static_assert(PROTOCOL_VERSION == 18);
 	GameplayProfile aProfile;
 	aProfile.mProfileId = 17;
 	aProfile.mAdventureLevel = 34;
 	aProfile.mCoins = 12340;
 	aProfile.mFinishedAdventure = 1;
-	aProfile.mFlags = PROFILE_HAS_UNLOCKED_MINIGAMES | PROFILE_HAS_SEEN_UPSELL;
+	aProfile.mFlags = PROFILE_HAS_UNLOCKED_MINIGAMES | PROFILE_HAS_SEEN_UPSELL |
+		PROFILE_DISABLE_AUTO_GENERATED_GRAVES;
 	aProfile.mChallengeRecords[7] = 3;
 	aProfile.mPurchases[4] = 1002;
 	aProfile.mPottedPlants.push_back(GameplayPottedPlant{

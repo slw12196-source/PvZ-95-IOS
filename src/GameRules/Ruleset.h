@@ -223,7 +223,8 @@ namespace PvzRules
 	bool ResolveChallengeZombieAllowed(GameMode theGameMode, bool theIsLittleTroubleLevel,
 		bool theIsFirstWallnutBowlingLevel, ZombieType theZombieType, bool theOriginalValue);
 	ChallengeWaveGraveAction ResolveChallengeWaveGraveAction(GameMode theGameMode,
-		bool theDaisyMode, int theCurrentWave, int theNumWaves, bool theIsFlagWave);
+		bool theDaisyMode, int theCurrentWave, int theNumWaves, bool theIsFlagWave,
+		bool theAutoGenerateGraves = true);
 	ChallengeStartSetup ResolveChallengeStartSetup(
 		bool theBoardExists, bool theOriginalWallnutBowlingCondition);
 	bool ResolveSeedNotAllowedToPick(

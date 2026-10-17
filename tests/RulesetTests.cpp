@@ -586,6 +586,12 @@ int main()
 	ExpectEqual("PvZ 95 grave threshold starts above nine", static_cast<int>(ResolveChallengeWaveGraveAction(
 		GAMEMODE_ADVENTURE, false, 10, 20, false)),
 		static_cast<int>(ChallengeWaveGraveAction::SPAWN_RANDOM_GRAVE));
+	ExpectEqual("PvZ 95 disabled automatic graves suppress random generation", static_cast<int>(
+		ResolveChallengeWaveGraveAction(GAMEMODE_ADVENTURE, false, 10, 20, false, false)),
+		static_cast<int>(ChallengeWaveGraveAction::NONE));
+	ExpectEqual("PvZ 95 disabled automatic graves keep flag grave spawning", static_cast<int>(
+		ResolveChallengeWaveGraveAction(GAMEMODE_ADVENTURE, false, 10, 20, true, false)),
+		static_cast<int>(ChallengeWaveGraveAction::SPAWN_ZOMBIES_FROM_GRAVES));
 	ExpectEqual("PvZ 95 final wave skips grave chain", static_cast<int>(ResolveChallengeWaveGraveAction(
 		GAMEMODE_ADVENTURE, false, 19, 20, true)), static_cast<int>(ChallengeWaveGraveAction::NONE));
 	const ChallengeStartSetup aPvZ95StartSetup = ResolveChallengeStartSetup(true, false);

@@ -77,6 +77,9 @@ NewOptionsDialog::NewOptionsDialog(LawnApp* theApp, bool theFromGameSelector) :
 
 	mFullscreenCheckbox = MakeNewCheckbox(NewOptionsDialog::NewOptionsDialog_Fullscreen, this, !theApp->mIsWindowed);
 	mHardwareAccelerationCheckbox = MakeNewCheckbox(NewOptionsDialog::NewOptionsDialog_HardwareAcceleration, this, theApp->Is3DAccelerated());
+	mAutoGenerateGravesCheckbox = MakeNewCheckbox(
+		NewOptionsDialog::NewOptionsDialog_AutoGenerateGraves, this, theApp->mAutoGenerateGraves);
+	mAutoGenerateGravesCheckbox->SetVisible(mFromGameSelector);
 
 	if (mFromGameSelector)
 	{
@@ -126,6 +129,7 @@ NewOptionsDialog::~NewOptionsDialog()
 	delete mSfxVolumeSlider;
 	delete mFullscreenCheckbox;
 	delete mHardwareAccelerationCheckbox;
+	delete mAutoGenerateGravesCheckbox;
 	delete mAlmanacButton;
 	delete mRestartButton;
 	delete mBackToMainButton;
@@ -148,6 +152,7 @@ void NewOptionsDialog::AddedToManager(Sexy::WidgetManager* theWidgetManager)
 	AddWidget(mSfxVolumeSlider);
 	AddWidget(mHardwareAccelerationCheckbox);
 	AddWidget(mFullscreenCheckbox);
+	AddWidget(mAutoGenerateGravesCheckbox);
 	AddWidget(mBackToGameButton);
 }
 
@@ -159,6 +164,7 @@ void NewOptionsDialog::RemovedFromManager(Sexy::WidgetManager* theWidgetManager)
 	RemoveWidget(mSfxVolumeSlider);
 	RemoveWidget(mFullscreenCheckbox);
 	RemoveWidget(mHardwareAccelerationCheckbox);
+	RemoveWidget(mAutoGenerateGravesCheckbox);
 	RemoveWidget(mBackToMainButton);
 	RemoveWidget(mBackToGameButton);
 	RemoveWidget(mRestartButton);
@@ -171,6 +177,7 @@ void NewOptionsDialog::Resize(int theX, int theY, int theWidth, int theHeight)
 	mSfxVolumeSlider->Resize(199, 143, 135, 40);
 	mHardwareAccelerationCheckbox->Resize(283, 175, 46, 45);
 	mFullscreenCheckbox->Resize(284, 206, 46, 45);
+	mAutoGenerateGravesCheckbox->Resize(284, 262, 46, 45);
 	mAlmanacButton->Resize(107, 241, 209, 46);
 	mRestartButton->Resize(mAlmanacButton->mX, mAlmanacButton->mY + 43, 209, 46);
 	mBackToMainButton->Resize(mRestartButton->mX, mRestartButton->mY + 43, 209, 46);
@@ -216,6 +223,12 @@ void NewOptionsDialog::Draw(Sexy::Graphics* g)
 	PvzpDrawString(g, mApp->GetString("OPTIONS_SOUNDFX", "Sound FX"), aSliderLabelsX, 167 + aSfxOffset, FONT_DWARVENTODCRAFT18, aTextColor, DrawStringJustification::DS_ALIGN_RIGHT);
 	PvzpDrawString(g, mApp->GetString("OPTIONS_3D_ACCELERATION", "3D Acceleration"), aCheckboxLabelsX, 197 + a3DAccelOffset, FONT_DWARVENTODCRAFT18, aTextColor, DrawStringJustification::DS_ALIGN_RIGHT);
 	PvzpDrawString(g, mApp->GetString("OPTIONS_FULL_SCREEN", "Full Screen"), aCheckboxLabelsX, 229 + aFullScreenOffset, FONT_DWARVENTODCRAFT18, aTextColor, DrawStringJustification::DS_ALIGN_RIGHT);
+	if (mFromGameSelector)
+	{
+		PvzpDrawString(g, mApp->GetString("OPTIONS_AUTO_GENERATE_GRAVES", "自动生成墓碑"),
+			aCheckboxLabelsX, 285, FONT_DWARVENTODCRAFT18, aTextColor,
+			DrawStringJustification::DS_ALIGN_RIGHT);
+	}
 	if (aFontScale != 1.0f)
 		g->SetScale(1.0f, 1.0f, 0.0f, 0.0f);
 }
@@ -296,6 +309,11 @@ void NewOptionsDialog::CheckboxChecked(int theId, bool checked)
 				);
 			}
 		}
+		break;
+
+	case NewOptionsDialog::NewOptionsDialog_AutoGenerateGraves:
+		mApp->mAutoGenerateGraves = checked;
+		mApp->RegistryWriteBoolean("AutoGenerateGraves", checked);
 		break;
 	}
 }

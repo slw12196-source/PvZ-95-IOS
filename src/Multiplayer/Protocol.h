@@ -18,10 +18,9 @@
 
 namespace PvzMultiplayer
 {
-	// Version 17 adds an explicit host-authoritative level-complete message.
-	// Older peers must fail the handshake instead of leaving a client parked on
-	// the final simulation tick when a local completion animation differs.
-	constexpr uint16_t PROTOCOL_VERSION = 17;
+	// Version 18 synchronizes the host's automatic-grave preference so all peers
+	// make the same wave-time grave-generation decisions.
+	constexpr uint16_t PROTOCOL_VERSION = 18;
 	constexpr uint16_t DEFAULT_DISCOVERY_PORT = 43095;
 	constexpr uint16_t DEFAULT_GAME_PORT = 43096;
 	constexpr uint8_t MAX_PLAYERS = 4;
@@ -197,10 +196,11 @@ namespace PvzMultiplayer
 		PROFILE_HAS_UNLOCKED_SURVIVAL = 1U << 8,
 		PROFILE_NEEDS_MAGIC_TACO_REWARD = 1U << 9,
 		PROFILE_HAS_SEEN_STINKY = 1U << 10,
-		PROFILE_HAS_SEEN_UPSELL = 1U << 11
+		PROFILE_HAS_SEEN_UPSELL = 1U << 11,
+		PROFILE_DISABLE_AUTO_GENERATED_GRAVES = 1U << 12
 	};
 
-	constexpr uint32_t SESSION_PROFILE_KNOWN_FLAGS = (1U << 12) - 1;
+	constexpr uint32_t SESSION_PROFILE_KNOWN_FLAGS = (1U << 13) - 1;
 
 	struct GameplayPottedPlant
 	{

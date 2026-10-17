@@ -2846,8 +2846,11 @@ void Challenge::WhackAZombieSpawning()
 	mBoard->mZombieCountDown--;
 	if (mBoard->mZombieCountDown == 100 && mBoard->mCurrentWave > 0)
 	{
-		int aNumGraves = 5 - mBoard->GetGraveStonesCount();
-		WhackAZombiePlaceGraves(std::max(1, aNumGraves));
+		if (mApp->ShouldAutoGenerateGraves())
+		{
+			int aNumGraves = 5 - mBoard->GetGraveStonesCount();
+			WhackAZombiePlaceGraves(std::max(1, aNumGraves));
+		}
 	}
 	if (mBoard->mZombieCountDown == 5)
 	{
@@ -3045,7 +3048,7 @@ void Challenge::SpawnZombieWave()
 	int aIsFlagWave = mBoard->IsFlagWave(mBoard->mCurrentWave);
 	const PvzRules::ChallengeWaveGraveAction aGraveAction = PvzRules::ResolveChallengeWaveGraveAction(
 		mApp->mGameMode, mBoard->mDaisyMode, mBoard->mCurrentWave,
-		mBoard->mNumWaves, aIsFlagWave);
+		mBoard->mNumWaves, aIsFlagWave, mApp->ShouldAutoGenerateGraves());
 	if (aGraveAction == PvzRules::ChallengeWaveGraveAction::SPAWN_ZOMBIES_FROM_GRAVES)
 	{
 		mBoard->SpawnZombiesFromGraves();
@@ -3054,7 +3057,9 @@ void Challenge::SpawnZombieWave()
 	{
 		GraveDangerSpawnRandomGrave();
 	}
-	if (mApp->IsSurvivalMode() && mBoard->mBackground == BACKGROUND_2_NIGHT && mBoard->mCurrentWave == mBoard->mNumWaves - 1)
+	if (mApp->ShouldAutoGenerateGraves() && mApp->IsSurvivalMode() &&
+		mBoard->mBackground == BACKGROUND_2_NIGHT &&
+		mBoard->mCurrentWave == mBoard->mNumWaves - 1)
 	{
 		int aNumGraves = mBoard->GetGraveStonesCount();
 		int aGraveLimit = mApp->IsSurvivalNormal(mApp->mGameMode) ? 8 : 12;

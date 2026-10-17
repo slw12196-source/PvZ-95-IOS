@@ -737,7 +737,8 @@ namespace PvzRules
 	}
 
 	ChallengeWaveGraveAction ResolveChallengeWaveGraveAction(GameMode theGameMode,
-		bool theDaisyMode, int theCurrentWave, int theNumWaves, bool theIsFlagWave)
+		bool theDaisyMode, int theCurrentWave, int theNumWaves, bool theIsFlagWave,
+		bool theAutoGenerateGraves)
 	{
 		if (gActiveRuleset == RulesetId::PVZ95)
 		{
@@ -745,7 +746,7 @@ namespace PvzRules
 				return ChallengeWaveGraveAction::NONE;
 			if (theIsFlagWave)
 				return ChallengeWaveGraveAction::SPAWN_ZOMBIES_FROM_GRAVES;
-			return theCurrentWave > 9 ?
+			return theAutoGenerateGraves && theCurrentWave > 9 ?
 				ChallengeWaveGraveAction::SPAWN_RANDOM_GRAVE : ChallengeWaveGraveAction::NONE;
 		}
 
@@ -756,7 +757,7 @@ namespace PvzRules
 		}
 		if (theIsFlagWave)
 			return ChallengeWaveGraveAction::SPAWN_ZOMBIES_FROM_GRAVES;
-		return theCurrentWave > 5 ?
+		return theAutoGenerateGraves && theCurrentWave > 5 ?
 			ChallengeWaveGraveAction::SPAWN_RANDOM_GRAVE : ChallengeWaveGraveAction::NONE;
 	}
 

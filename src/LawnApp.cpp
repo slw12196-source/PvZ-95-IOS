@@ -211,6 +211,7 @@ LawnApp::LawnApp()
 	mDanceMode = false;
 	mDaisyMode = false;
 	mSukhbirMode = false;
+	mAutoGenerateGraves = true;
 	mGameScene = GameScenes::SCENE_LOADING;
 	mPoolEffect = nullptr;
 	mZenGarden = nullptr;
@@ -489,12 +490,14 @@ void LawnApp::WriteToRegistry()
 		aPersistentProfile->SaveDetails();
 	}
 
+	RegistryWriteBoolean("AutoGenerateGraves", mAutoGenerateGraves);
 	SexyAppBase::WriteToRegistry();
 }
 
 void LawnApp::ReadFromRegistry()
 {
 	SexyApp::ReadFromRegistry();
+	RegistryReadBoolean("AutoGenerateGraves", &mAutoGenerateGraves);
 }
 
 bool LawnApp::WriteCurrentUserConfig()
@@ -3753,6 +3756,7 @@ PvzMultiplayer::GameplayProfile LawnApp::CaptureGameplayProfile() const
 	if (mPlayerInfo->mNeedsMagicTacoReward) aSnapshot.mFlags |= PROFILE_NEEDS_MAGIC_TACO_REWARD;
 	if (mPlayerInfo->mHasSeenStinky) aSnapshot.mFlags |= PROFILE_HAS_SEEN_STINKY;
 	if (mPlayerInfo->mHasSeenUpsell) aSnapshot.mFlags |= PROFILE_HAS_SEEN_UPSELL;
+	if (!mAutoGenerateGraves) aSnapshot.mFlags |= PROFILE_DISABLE_AUTO_GENERATED_GRAVES;
 	return aSnapshot;
 }
 
@@ -3773,6 +3777,16 @@ bool LawnApp::ShouldAdvanceLanBoard() const
 bool LawnApp::IsLanGameplayActive() const
 {
 	return mLanSessionStart.has_value();
+}
+
+bool LawnApp::ShouldAutoGenerateGraves() const
+{
+	if (mLanSessionStart)
+	{
+		return (mLanSessionStart->mProfile.mFlags &
+			PvzMultiplayer::PROFILE_DISABLE_AUTO_GENERATED_GRAVES) == 0;
+	}
+	return mAutoGenerateGraves;
 }
 
 bool LawnApp::ShouldBlockLanLifecycleInput() const

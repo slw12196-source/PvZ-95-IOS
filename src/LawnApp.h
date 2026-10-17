@@ -161,6 +161,7 @@ public:
 	bool							mDanceMode;
 	bool							mDaisyMode;
 	bool							mSukhbirMode;
+	bool                            mAutoGenerateGraves;
 	TrialType						mTrialType;
 	bool							mDebugTrialLocked;
 	bool							mMuteSoundsForCutscene;
@@ -333,6 +334,7 @@ public:
 	PvzMultiplayer::GameplayProfile CaptureGameplayProfile() const;
 	bool                            ShouldAdvanceLanBoard() const;
 	bool                            IsLanGameplayActive() const;
+	bool                            ShouldAutoGenerateGraves() const;
 	bool                            ShouldBlockLanLifecycleInput() const;
 	bool                            RequestLanGameStart(GameMode theGameMode);
 	bool                            RequestLanLevelRestart();
