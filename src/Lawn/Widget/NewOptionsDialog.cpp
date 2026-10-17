@@ -225,7 +225,9 @@ void NewOptionsDialog::Draw(Sexy::Graphics* g)
 	PvzpDrawString(g, mApp->GetString("OPTIONS_FULL_SCREEN", "Full Screen"), aCheckboxLabelsX, 229 + aFullScreenOffset, FONT_DWARVENTODCRAFT18, aTextColor, DrawStringJustification::DS_ALIGN_RIGHT);
 	if (mFromGameSelector)
 	{
-		PvzpDrawString(g, mApp->GetString("OPTIONS_AUTO_GENERATE_GRAVES", "自动生成墓碑"),
+		// The bundled PvZ 95 dialog font does not contain the Chinese glyphs used
+		// by the previous fallback, which made the label render as blank.
+		PvzpDrawString(g, "Auto-Generate Graves",
 			aCheckboxLabelsX, 285, FONT_DWARVENTODCRAFT18, aTextColor,
 			DrawStringJustification::DS_ALIGN_RIGHT);
 	}
