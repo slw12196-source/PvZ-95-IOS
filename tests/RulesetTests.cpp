@@ -439,7 +439,7 @@ int main()
 	for (GameMode aWhackMode : {GAMEMODE_ADVENTURE, GAMEMODE_CHALLENGE_WHACK_A_ZOMBIE})
 	{
 		ExpectEqual("original Whack initial grave gate permits level setup",
-			ShouldRejectStageHasGraveStonesAtPogoGate(aWhackMode, false, true), false);
+			ShouldRejectStageHasGraveStonesAtPogoGate(aWhackMode, false), false);
 	}
 	for (bool aStageHasGraveStones : {false, true})
 	{
@@ -893,15 +893,25 @@ int main()
 	{
 		for (bool anOriginalValue : {false, true})
 		{
-			ExpectEqual("PvZ 95 StageHasGraveStones forced rejection",
-				ShouldRejectStageHasGraveStonesAtPogoGate(aGameMode, anOriginalValue), true);
+			ExpectEqual("PvZ 95 initial graves use the actual Pogo exclusion",
+				ShouldRejectStageHasGraveStonesAtPogoGate(aGameMode, anOriginalValue), anOriginalValue);
 		}
 	}
 	for (GameMode aWhackMode : {GAMEMODE_ADVENTURE, GAMEMODE_CHALLENGE_WHACK_A_ZOMBIE})
 	{
 		ExpectEqual("PvZ 95 Whack initial grave gate permits level setup",
-			ShouldRejectStageHasGraveStonesAtPogoGate(aWhackMode, false, true), false);
+			ShouldRejectStageHasGraveStonesAtPogoGate(aWhackMode, false), false);
 	}
+	for (GameMode aNightMode : {GAMEMODE_ADVENTURE, GAMEMODE_SURVIVAL_NORMAL_STAGE_2,
+		GAMEMODE_SURVIVAL_HARD_STAGE_2, GAMEMODE_SURVIVAL_ENDLESS_STAGE_2,
+		GAMEMODE_CHALLENGE_GRAVE_DANGER})
+	{
+		ExpectEqual("PvZ 95 ordinary night initial graves are not rejected",
+			ShouldRejectStageHasGraveStonesAtPogoGate(aNightMode,
+				aNightMode == GAMEMODE_CHALLENGE_POGO_PARTY), false);
+	}
+	ExpectEqual("PvZ 95 Pogo still excludes initial graves",
+		ShouldRejectStageHasGraveStonesAtPogoGate(GAMEMODE_CHALLENGE_POGO_PARTY, true), true);
 	for (bool aStageHasGraveStones : {false, true})
 	{
 		for (bool anOriginalValue : {false, true})

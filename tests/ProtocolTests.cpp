@@ -45,7 +45,7 @@ namespace
 int main()
 {
 	using namespace PvzMultiplayer;
-	static_assert(PROTOCOL_VERSION == 19);
+	static_assert(PROTOCOL_VERSION == 20);
 	GameplayProfile aProfile;
 	aProfile.mProfileId = 17;
 	aProfile.mAdventureLevel = 34;

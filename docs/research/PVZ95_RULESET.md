@@ -21,6 +21,13 @@ The PvZ 95 game executable is therefore an already-patched 32-bit original execu
 
 ## Implemented direct table changes
 
+Runtime override requested for the iOS port: eligible night stages retain their
+original starting graves, including all Adventure stage-2 levels and
+Whack-a-Zombie. The sampled binary's unconditional `StageHasGraveStones` rejection
+documented below is intentionally no longer reproduced. The Pogo and other
+normal mode/background exclusions still apply. `Auto-Generate Graves` controls
+only additions during play and does not remove the starting layout.
+
 These values are read directly from the changed plant and projectile definition tables and are covered by `pvz95-rules-tests`. All reference-source locations in this document use `ruslan831/PlantsVsZombies-decompilation` commit `20b245acee018fe32804b271fd6400bca06618c1`.
 
 | Object | Field | Original | PvZ 95 |

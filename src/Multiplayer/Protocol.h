@@ -18,9 +18,9 @@
 
 namespace PvzMultiplayer
 {
-	// Version 19 restores Whack-a-Zombie initial graves.  Older peers construct
-	// a different starting board and must be rejected before a session begins.
-	constexpr uint16_t PROTOCOL_VERSION = 19;
+	// Version 20 restores initial graves in all eligible night stages.  Older
+	// peers construct different boards and must be rejected before play begins.
+	constexpr uint16_t PROTOCOL_VERSION = 20;
 	constexpr uint16_t DEFAULT_DISCOVERY_PORT = 43095;
 	constexpr uint16_t DEFAULT_GAME_PORT = 43096;
 	constexpr uint8_t MAX_PLAYERS = 4;
