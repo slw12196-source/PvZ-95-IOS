@@ -63,6 +63,11 @@ void SexyAppBase::MakeWindow()
 		Uint32 winFlags = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE
 			| (!mIsWindowed ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0);
 
+#if defined(__IPHONEOS__)
+		// Request a Retina-resolution drawable instead of an upscaled 1x backbuffer.
+		winFlags |= SDL_WINDOW_ALLOW_HIGHDPI;
+#endif
+
 		// Try OpenGL ES 2.0 first (Linux, most Windows drivers, ANGLE, etc.)
 		SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
 		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);

@@ -50,6 +50,7 @@ PvZ 95 Co-op 的目标是让 2–4 名玩家共同操控同一局《植物大战
 3. Windows：把下载的 `PvZ-95-Co-op-*-Windows-x64.exe` 拖进解压后的完整游戏目录，与 `main.pak`、`properties/` 放在同一级，然后双击启动。
 4. Apple Silicon macOS：解压下载的 ZIP，把 `pvz95-coop.app` 拖进同一个完整游戏目录，然后双击启动。首次打开可能需要在 Finder 中右键应用并选择“打开”。
 5. Android 7.0+（arm64）：安装 APK，首次打开后在资源管理界面选择上面的资源 ZIP 或包含 `main.pak` 与 `properties/` 的文件夹。Android 版沿用 SDL 的触摸转鼠标操作，目前属于实验性构建，尚未针对手机界面做专门适配。
+6. iOS 16.4+（arm64，实验性）：从 CI 下载 `pvz95-ios-arm64-unsigned.ipa` 并使用你自己的签名方式安装。首次启动后，在“文件”App 的“我的 iPhone/iPad → PvZ 95”根目录中放入 `main.pak` 和完整的 `properties/` 目录，再重新启动游戏。IPA 不包含游戏资源。
 
 加载器支持所分析 PvZ 95 包使用的原版零售 1.0 编译定义，也支持较新的原生布局，并会在加载时把旧版 GBK 中文文本转换为 UTF-8。
 
@@ -208,6 +209,7 @@ To download and run the game:
 3. Windows: move `PvZ-95-Co-op-*-Windows-x64.exe` into the extracted game folder, alongside `main.pak` and `properties/`, then double-click it.
 4. Apple Silicon macOS: extract the downloaded ZIP, move `pvz95-coop.app` into the same complete game folder, then double-click it. On first launch, you may need to right-click the app in Finder and choose **Open**.
 5. Android 7.0+ (arm64): install the APK, then use its first-launch data manager to select the resource ZIP above or a folder containing `main.pak` and `properties/`. The Android build currently uses SDL touch-to-mouse input and is experimental; it has no phone-specific UI adaptation yet.
+6. iOS 16.4+ (arm64, experimental): download `pvz95-ios-arm64-unsigned.ipa` from CI and install it using your own signing method. After the first launch, place `main.pak` and the complete `properties/` directory at the root of **Files → On My iPhone/iPad → PvZ 95**, then relaunch the game. The IPA does not contain game data.
 
 The loader accepts the original retail 1.0 compiled definitions used by the analyzed PvZ 95 package as well as the newer native layout, and converts legacy Chinese GBK text to UTF-8 at load time.
 
