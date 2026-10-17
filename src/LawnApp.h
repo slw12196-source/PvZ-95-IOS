@@ -93,7 +93,9 @@ public:
 	{
 		NONE,
 		SEED_PACKET,
-		SHOVEL
+		SHOVEL,
+		SELECTED_PLANT,
+		SELECTED_SHOVEL
 	};
 
 	Board*							mBoard;
@@ -192,8 +194,12 @@ public:
 	bool                            mLocalLanShovelSelected{};
 	bool                            mTouchPointerDown{};
 	TouchDragSource                 mTouchDragSource{TouchDragSource::NONE};
+	int                             mTouchStartX{};
+	int                             mTouchStartY{};
 	int                             mTouchLastX{};
 	int                             mTouchLastY{};
+	bool                            mTouchHasDragged{};
+	bool                            mTouchLanUsablePlantingValid{};
 	std::vector<CoinID>             mTouchCollectedCoinIds;
 	bool                            mApplyingLanSessionStart{};
 	bool                            mLanWaitingForBegin{};

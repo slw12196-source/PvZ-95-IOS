@@ -730,8 +730,8 @@ bool SexyAppBase::ProcessDeferredMessages(bool singleMessage)
 				{
 					// PvZ performs planting and tool actions on MouseDown.  A direct touch
 					// drag therefore needs one primary action at the release position.
-					// LocalTouchEnd only requests it for a valid drag target, so black
-					// bars, the seed bank, and rule-invalid squares remain no-ops.
+					// LocalTouchEnd only requests it for a valid drag target; invalid
+					// targets are canceled there so no plant/tool remains floating.
 					if (!LocalMouseButton(x, y, 1, true))
 						mWidgetManager->MouseDown(x, y, 1);
 				}

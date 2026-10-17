@@ -78,6 +78,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cstdarg>
+#include <cstdlib>
 #include <cstdio>
 #include <ctime>
 #include <filesystem>
@@ -1936,11 +1937,15 @@ void LawnApp::LocalTouchStart(int theX, int theY)
 {
 	mTouchPointerDown = true;
 	mTouchDragSource = TouchDragSource::NONE;
+	mTouchStartX = theX;
+	mTouchStartY = theY;
 	mTouchLastX = theX;
 	mTouchLastY = theY;
+	mTouchHasDragged = false;
+	mTouchLanUsablePlantingValid = false;
 	mTouchCollectedCoinIds.clear();
 
-	if (!mBoard || !IsBoardInputAt(theX, theY))
+	if (!mBoard)
 		return;
 
 	using namespace PvzMultiplayer;
@@ -1948,15 +1953,56 @@ void LawnApp::LocalTouchStart(int theX, int theY)
 	bool aLanGame = mLanSessionBegun &&
 		(aMode == LanMode::HOSTING || aMode == LanMode::CONNECTED);
 	PlayerId aLocalPlayerId = mSharedInputState.GetLocalPlayerId();
-	bool aLanSelection = aLanGame &&
-		(mLocalLanSeedBankIndex >= 0 || mLocalLanShovelSelected ||
-		mLocalLanCobCannonPlantId != PlantID::PLANTID_NULL ||
-		mLanHeldUsableSeedCoinIds[aLocalPlayerId] != CoinID::COINID_NULL);
-	if (aLanSelection || (!aLanGame &&
-		mBoard->mCursorObject->mCursorType != CursorType::CURSOR_TYPE_NORMAL))
+	if (aLanGame)
 	{
+		CoinID aHeldUsableSeedId = mLanHeldUsableSeedCoinIds[aLocalPlayerId];
+		if (mLocalLanSeedBankIndex >= 0 || aHeldUsableSeedId != CoinID::COINID_NULL)
+		{
+			mTouchDragSource = TouchDragSource::SELECTED_PLANT;
+			// LAN usable seeds remain selected until their queued planting action is
+			// applied.  Remember a valid tap so TouchEnd does not enqueue a drop too.
+			if (aHeldUsableSeedId != CoinID::COINID_NULL && IsBoardInputAt(theX, theY))
+			{
+				Coin* aHeldCoin = mBoard->mCoins.DataArrayTryToGet(aHeldUsableSeedId);
+				if (aHeldCoin && !aHeldCoin->mDead &&
+					aHeldCoin->mType == CoinType::COIN_USABLE_SEED_PACKET)
+				{
+					int aBoardX = theX - mBoard->mX;
+					int aBoardY = theY - mBoard->mY;
+					SeedType aSeedType = aHeldCoin->mUsableSeedType;
+					int aGridX = mBoard->PlantingPixelToGridX(aBoardX, aBoardY, aSeedType);
+					int aGridY = mBoard->PlantingPixelToGridY(aBoardX, aBoardY, aSeedType);
+					mTouchLanUsablePlantingValid =
+						aGridX >= 0 && aGridX < MAX_GRID_SIZE_X &&
+						aGridY >= 0 && aGridY < MAX_GRID_SIZE_Y &&
+						mBoard->CanPlantAt(aGridX, aGridY, aSeedType) == PlantingReason::PLANTING_OK;
+				}
+			}
+			return;
+		}
+		if (mLocalLanShovelSelected)
+		{
+			mTouchDragSource = TouchDragSource::SELECTED_SHOVEL;
+			return;
+		}
+		if (mLocalLanCobCannonPlantId != PlantID::PLANTID_NULL)
+			return;
+	}
+	else if (mBoard->IsPlantInCursor())
+	{
+		mTouchDragSource = TouchDragSource::SELECTED_PLANT;
 		return;
 	}
+	else if (mBoard->mCursorObject->mCursorType == CursorType::CURSOR_TYPE_SHOVEL)
+	{
+		mTouchDragSource = TouchDragSource::SELECTED_SHOVEL;
+		return;
+	}
+	else if (mBoard->mCursorObject->mCursorType != CursorType::CURSOR_TYPE_NORMAL)
+		return;
+
+	if (!IsBoardInputAt(theX, theY))
+		return;
 
 	int aBoardX = theX - mBoard->mX;
 	int aBoardY = theY - mBoard->mY;
@@ -1982,6 +2028,8 @@ void LawnApp::LocalTouchMove(int theX, int theY)
 {
 	if (!mTouchPointerDown)
 		return;
+	if (std::abs(theX - mTouchStartX) >= 8 || std::abs(theY - mTouchStartY) >= 8)
+		mTouchHasDragged = true;
 
 	int aStartX = mTouchLastX;
 	int aStartY = mTouchLastY;
@@ -2067,6 +2115,8 @@ bool LawnApp::LocalTouchEnd(int theX, int theY)
 		return false;
 
 	mTouchPointerDown = false;
+	if (std::abs(theX - mTouchStartX) >= 8 || std::abs(theY - mTouchStartY) >= 8)
+		mTouchHasDragged = true;
 	TouchDragSource aDragSource = mTouchDragSource;
 	mTouchDragSource = TouchDragSource::NONE;
 	mTouchCollectedCoinIds.clear();
@@ -2077,21 +2127,92 @@ bool LawnApp::LocalTouchEnd(int theX, int theY)
 	LanMode aMode = mLanCoordinator ? mLanCoordinator->GetMode() : LanMode::OFFLINE;
 	bool aLanGame = mLanSessionBegun &&
 		(aMode == LanMode::HOSTING || aMode == LanMode::CONNECTED);
+	auto CancelPlantSelection = [&]()
+	{
+		bool aCanceled = false;
+		if (aLanGame)
+		{
+			PlayerId aLocalPlayerId = mSharedInputState.GetLocalPlayerId();
+			CoinID aHeldUsableSeedId = mLanHeldUsableSeedCoinIds[aLocalPlayerId];
+			if (aHeldUsableSeedId != CoinID::COINID_NULL)
+			{
+				QueueLocalLanAction({0, 0, static_cast<uint32_t>(aHeldUsableSeedId),
+					0, 0, 0, ActionKind::DROP_USABLE_SEED});
+				aCanceled = true;
+			}
+			if (mLocalLanSeedBankIndex >= 0)
+			{
+				mLocalLanSeedBankIndex = -1;
+				aCanceled = true;
+			}
+		}
+		else if (mBoard->IsPlantInCursor())
+		{
+			mBoard->RefreshSeedPacketFromCursor();
+			aCanceled = true;
+		}
+		if (aCanceled)
+			PlayFoley(FoleyType::FOLEY_DROP);
+	};
+	auto CancelShovelSelection = [&]()
+	{
+		bool aCanceled = false;
+		if (aLanGame)
+		{
+			aCanceled = mLocalLanShovelSelected;
+			mLocalLanShovelSelected = false;
+		}
+		else if (mBoard->mCursorObject->mCursorType == CursorType::CURSOR_TYPE_SHOVEL)
+		{
+			mBoard->ClearCursor();
+			aCanceled = true;
+		}
+		if (aCanceled)
+			PlayFoley(FoleyType::FOLEY_DROP);
+	};
+
+	// A tap with an already selected plant/tool is dispatched on touch-down.
+	// If the original game left the selection active, the target was invalid or
+	// outside the board, so mobile interaction treats touch-up as cancellation.
+	if (aDragSource == TouchDragSource::SELECTED_PLANT)
+	{
+		if (!mTouchLanUsablePlantingValid)
+			CancelPlantSelection();
+		mTouchLanUsablePlantingValid = false;
+		return false;
+	}
+	if (aDragSource == TouchDragSource::SELECTED_SHOVEL)
+	{
+		CancelShovelSelection();
+		return false;
+	}
+
 	int aBoardX = theX - mBoard->mX;
 	int aBoardY = theY - mBoard->mY;
 	if (aBoardX < 0 || aBoardX >= mBoard->mWidth ||
 		aBoardY < 0 || aBoardY >= mBoard->mHeight)
 	{
+		if (aDragSource == TouchDragSource::SHOVEL)
+			CancelShovelSelection();
+		else
+			CancelPlantSelection();
 		return false;
 	}
 
 	if (aDragSource == TouchDragSource::SHOVEL)
 	{
+		// A simple tap only selects the shovel.  Cancellation is reserved for an
+		// actual drag that ends without a plant under it.
+		if (!mTouchHasDragged)
+			return false;
 		bool aShovelSelected = aLanGame ? mLocalLanShovelSelected :
 			mBoard->mCursorObject->mCursorType == CursorType::CURSOR_TYPE_SHOVEL;
 		// ToolHitTest uses TOPPLANT_DIGGING_ORDER, preserving the retail order for
 		// pumpkin/normal plant/flowerpot and every other composite square.
-		return aShovelSelected && mBoard->ToolHitTest(aBoardX, aBoardY) != nullptr;
+		bool aValidTarget = aShovelSelected && mBoard->ToolHitTest(aBoardX, aBoardY) != nullptr;
+		if (!aValidTarget)
+			CancelShovelSelection();
+		return aValidTarget;
 	}
 
 	SeedType aSeedType = SeedType::SEED_NONE;
@@ -2100,6 +2221,11 @@ bool LawnApp::LocalTouchEnd(int theX, int theY)
 		mBoard->mSeedBank->MouseHitTest(aBoardX, aBoardY, &aSeedBankHit) &&
 		aSeedBankHit.mObjectType == GameObjectType::OBJECT_TYPE_SEEDPACKET)
 	{
+		// Keep click-to-select intact.  Only a card that was genuinely dragged
+		// away and brought back to the bank is canceled here.
+		if (!mTouchHasDragged)
+			return false;
+		CancelPlantSelection();
 		return false;
 	}
 	if (aLanGame)
@@ -2107,6 +2233,7 @@ bool LawnApp::LocalTouchEnd(int theX, int theY)
 		if (mLocalLanSeedBankIndex < 0 || !mBoard->mSeedBank ||
 			mLocalLanSeedBankIndex >= mBoard->mSeedBank->mNumPackets)
 		{
+			CancelPlantSelection();
 			return false;
 		}
 		SeedPacket& aPacket = mBoard->mSeedBank->mSeedPackets[mLocalLanSeedBankIndex];
@@ -2125,14 +2252,18 @@ bool LawnApp::LocalTouchEnd(int theX, int theY)
 	if (aGridX < 0 || aGridX >= MAX_GRID_SIZE_X ||
 		aGridY < 0 || aGridY >= MAX_GRID_SIZE_Y)
 	{
+		CancelPlantSelection();
 		return false;
 	}
 
 	// Reuse the game's own placement rule.  This rejects occupied ordinary
 	// squares while still allowing flowerpots, lily pads, pumpkins, upgrades,
 	// and other combinations that the active ruleset explicitly permits.
-	return IsIZombieLevel() ||
+	bool aValidTarget = IsIZombieLevel() ||
 		mBoard->CanPlantAt(aGridX, aGridY, aSeedType) == PlantingReason::PLANTING_OK;
+	if (!aValidTarget)
+		CancelPlantSelection();
+	return aValidTarget;
 }
 
 bool LawnApp::LocalMouseButton(int theX, int theY, int theClickCount, bool theDown)
