@@ -674,6 +674,10 @@ bool SexyAppBase::ProcessDeferredMessages(bool singleMessage)
 
 				LocalMouseMove(x, y);
 				mWidgetManager->MouseMove(x, y);
+#if defined(__IPHONEOS__)
+				if (event.motion.which == SDL_TOUCH_MOUSEID)
+					LocalTouchMove(x, y);
+#endif
 				break;
 			}
 
@@ -691,6 +695,10 @@ bool SexyAppBase::ProcessDeferredMessages(bool singleMessage)
 
 				LocalMouseMove(x, y);
 				mWidgetManager->MouseMove(x, y);
+#if defined(__IPHONEOS__)
+				if (event.button.which == SDL_TOUCH_MOUSEID)
+					LocalTouchStart(x, y);
+#endif
 				int btn =
 					(event.button.button == SDL_BUTTON_LEFT) ? 1 :
 					(event.button.button == SDL_BUTTON_RIGHT) ? -1 :
@@ -717,6 +725,17 @@ bool SexyAppBase::ProcessDeferredMessages(bool singleMessage)
 
 				LocalMouseMove(x, y);
 				mWidgetManager->MouseMove(x, y);
+#if defined(__IPHONEOS__)
+				if (event.button.which == SDL_TOUCH_MOUSEID && LocalTouchEnd(x, y))
+				{
+					// PvZ performs planting and tool actions on MouseDown.  A direct touch
+					// drag therefore needs one primary action at the release position.
+					// LocalTouchEnd only requests it for a valid drag target, so black
+					// bars, the seed bank, and rule-invalid squares remain no-ops.
+					if (!LocalMouseButton(x, y, 1, true))
+						mWidgetManager->MouseDown(x, y, 1);
+				}
+#endif
 				int btn =
 					(event.button.button == SDL_BUTTON_LEFT) ? 1 :
 					(event.button.button == SDL_BUTTON_RIGHT) ? -1 :

@@ -2328,6 +2328,19 @@ bool SexyAppBase::LocalMouseButton(int, int, int, bool)
 	return false;
 }
 
+void SexyAppBase::LocalTouchStart(int, int)
+{
+}
+
+void SexyAppBase::LocalTouchMove(int, int)
+{
+}
+
+bool SexyAppBase::LocalTouchEnd(int, int)
+{
+	return false;
+}
+
 void SexyAppBase::CloseRequestAsync()
 {
 }

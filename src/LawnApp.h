@@ -33,6 +33,7 @@
 #include <optional>
 #include <memory>
 #include <array>
+#include <vector>
 
 class Board;
 class GameSelector;
@@ -88,6 +89,13 @@ public:
 class LawnApp : public SexyApp
 {
 public:
+	enum class TouchDragSource : uint8_t
+	{
+		NONE,
+		SEED_PACKET,
+		SHOVEL
+	};
+
 	Board*							mBoard;
 	TitleScreen*					mTitleScreen;
 	GameSelector*					mGameSelector;
@@ -182,6 +190,11 @@ public:
 	bool                            mLastLanCursorVisible{};
 	bool                            mHasSentLanCursor{};
 	bool                            mLocalLanShovelSelected{};
+	bool                            mTouchPointerDown{};
+	TouchDragSource                 mTouchDragSource{TouchDragSource::NONE};
+	int                             mTouchLastX{};
+	int                             mTouchLastY{};
+	std::vector<CoinID>             mTouchCollectedCoinIds;
 	bool                            mApplyingLanSessionStart{};
 	bool                            mLanWaitingForBegin{};
 	uint32_t                        mLanBarrierStartAppCounter{};
@@ -278,6 +291,9 @@ public:
 	void							UpdateFrames() override;
 	void                            LocalMouseMove(int theX, int theY) override;
 	bool                            LocalMouseButton(int theX, int theY, int theClickCount, bool theDown) override;
+	void                            LocalTouchStart(int theX, int theY) override;
+	void                            LocalTouchMove(int theX, int theY) override;
+	bool                            LocalTouchEnd(int theX, int theY) override;
 	void                            DrawLanCursorPreviews(Sexy::Graphics* theGraphics) const;
 	void                            DrawSharedCursors(Sexy::Graphics* theGraphics, int theOriginX, int theOriginY) const;
 	void                            UpdateLanSession();

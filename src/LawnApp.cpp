@@ -1932,6 +1932,209 @@ void LawnApp::LocalMouseMove(int theX, int theY)
 	mLocalLanCursorVisible = true;
 }
 
+void LawnApp::LocalTouchStart(int theX, int theY)
+{
+	mTouchPointerDown = true;
+	mTouchDragSource = TouchDragSource::NONE;
+	mTouchLastX = theX;
+	mTouchLastY = theY;
+	mTouchCollectedCoinIds.clear();
+
+	if (!mBoard || !IsBoardInputAt(theX, theY))
+		return;
+
+	using namespace PvzMultiplayer;
+	LanMode aMode = mLanCoordinator ? mLanCoordinator->GetMode() : LanMode::OFFLINE;
+	bool aLanGame = mLanSessionBegun &&
+		(aMode == LanMode::HOSTING || aMode == LanMode::CONNECTED);
+	PlayerId aLocalPlayerId = mSharedInputState.GetLocalPlayerId();
+	bool aLanSelection = aLanGame &&
+		(mLocalLanSeedBankIndex >= 0 || mLocalLanShovelSelected ||
+		mLocalLanCobCannonPlantId != PlantID::PLANTID_NULL ||
+		mLanHeldUsableSeedCoinIds[aLocalPlayerId] != CoinID::COINID_NULL);
+	if (aLanSelection || (!aLanGame &&
+		mBoard->mCursorObject->mCursorType != CursorType::CURSOR_TYPE_NORMAL))
+	{
+		return;
+	}
+
+	int aBoardX = theX - mBoard->mX;
+	int aBoardY = theY - mBoard->mY;
+	HitResult aHitResult{};
+	mBoard->MouseHitTest(aBoardX, aBoardY, &aHitResult);
+	if (aHitResult.mObjectType == GameObjectType::OBJECT_TYPE_SEEDPACKET)
+	{
+		mTouchDragSource = TouchDragSource::SEED_PACKET;
+	}
+	else if (aHitResult.mObjectType == GameObjectType::OBJECT_TYPE_SHOVEL)
+	{
+		mTouchDragSource = TouchDragSource::SHOVEL;
+	}
+	else if (aHitResult.mObjectType == GameObjectType::OBJECT_TYPE_COIN)
+	{
+		Coin* aCoin = static_cast<Coin*>(aHitResult.mObject);
+		mTouchCollectedCoinIds.push_back(
+			static_cast<CoinID>(mBoard->mCoins.DataArrayGetID(aCoin)));
+	}
+}
+
+void LawnApp::LocalTouchMove(int theX, int theY)
+{
+	if (!mTouchPointerDown)
+		return;
+
+	int aStartX = mTouchLastX;
+	int aStartY = mTouchLastY;
+	mTouchLastX = theX;
+	mTouchLastY = theY;
+
+	// A seed packet or shovel drag owns the gesture until release.  Currency
+	// collection is only active for a free swipe with the ordinary cursor.
+	if (!mBoard || mTouchDragSource != TouchDragSource::NONE ||
+		mBoard->mCursorObject->mCursorType != CursorType::CURSOR_TYPE_NORMAL)
+	{
+		return;
+	}
+
+	using namespace PvzMultiplayer;
+	LanMode aMode = mLanCoordinator ? mLanCoordinator->GetMode() : LanMode::OFFLINE;
+	bool aLanGame = mLanSessionBegun &&
+		(aMode == LanMode::HOSTING || aMode == LanMode::CONNECTED);
+	PlayerId aLocalPlayerId = mSharedInputState.GetLocalPlayerId();
+	if (aLanGame &&
+		(mLocalLanSeedBankIndex >= 0 || mLocalLanShovelSelected ||
+		mLocalLanCobCannonPlantId != PlantID::PLANTID_NULL ||
+		mLanHeldUsableSeedCoinIds[aLocalPlayerId] != CoinID::COINID_NULL))
+	{
+		return;
+	}
+
+	int aDeltaX = theX - aStartX;
+	int aDeltaY = theY - aStartY;
+	int anAbsX = aDeltaX < 0 ? -aDeltaX : aDeltaX;
+	int anAbsY = aDeltaY < 0 ? -aDeltaY : aDeltaY;
+	int aSteps = (std::max(anAbsX, anAbsY) + 7) / 8;
+	if (aSteps < 1)
+		aSteps = 1;
+
+	// Interpolate the whole segment so a fast swipe cannot jump over a drop
+	// between two SDL motion samples.  Coin::MouseHitTest retains the original
+	// per-drop hit boxes and Coin::MouseDown retains all original collection rules.
+	for (int aStep = 1; aStep <= aSteps; ++aStep)
+	{
+		int aSampleX = aStartX + aDeltaX * aStep / aSteps - mBoard->mX;
+		int aSampleY = aStartY + aDeltaY * aStep / aSteps - mBoard->mY;
+		for (Coin* aCoin : mBoard->mCoins)
+		{
+			if (aCoin->mDead || aCoin->mIsBeingCollected)
+				continue;
+
+			HitResult aCoinHit{};
+			if (!aCoin->MouseHitTest(aSampleX, aSampleY, &aCoinHit))
+				continue;
+
+			CoinID aCoinId = static_cast<CoinID>(mBoard->mCoins.DataArrayGetID(aCoin));
+			if (std::find(mTouchCollectedCoinIds.begin(), mTouchCollectedCoinIds.end(),
+				aCoinId) != mTouchCollectedCoinIds.end())
+			{
+				continue;
+			}
+
+			bool aCollected = true;
+			if (aLanGame)
+			{
+				aCollected = QueueLocalLanAction({0, 0, static_cast<uint32_t>(aCoinId),
+					0, 0, 0, ActionKind::COLLECT_COIN});
+			}
+			else
+			{
+				aCoin->MouseDown(aSampleX, aSampleY, 1);
+				aCollected = aCoin->mIsBeingCollected || aCoin->mDead;
+			}
+			if (aCollected)
+			{
+				mTouchCollectedCoinIds.push_back(aCoinId);
+				if (aCoin->mType == CoinType::COIN_USABLE_SEED_PACKET)
+					return;
+			}
+		}
+	}
+}
+
+bool LawnApp::LocalTouchEnd(int theX, int theY)
+{
+	if (!mTouchPointerDown)
+		return false;
+
+	mTouchPointerDown = false;
+	TouchDragSource aDragSource = mTouchDragSource;
+	mTouchDragSource = TouchDragSource::NONE;
+	mTouchCollectedCoinIds.clear();
+	if (!mBoard || aDragSource == TouchDragSource::NONE)
+		return false;
+
+	using namespace PvzMultiplayer;
+	LanMode aMode = mLanCoordinator ? mLanCoordinator->GetMode() : LanMode::OFFLINE;
+	bool aLanGame = mLanSessionBegun &&
+		(aMode == LanMode::HOSTING || aMode == LanMode::CONNECTED);
+	int aBoardX = theX - mBoard->mX;
+	int aBoardY = theY - mBoard->mY;
+	if (aBoardX < 0 || aBoardX >= mBoard->mWidth ||
+		aBoardY < 0 || aBoardY >= mBoard->mHeight)
+	{
+		return false;
+	}
+
+	if (aDragSource == TouchDragSource::SHOVEL)
+	{
+		bool aShovelSelected = aLanGame ? mLocalLanShovelSelected :
+			mBoard->mCursorObject->mCursorType == CursorType::CURSOR_TYPE_SHOVEL;
+		// ToolHitTest uses TOPPLANT_DIGGING_ORDER, preserving the retail order for
+		// pumpkin/normal plant/flowerpot and every other composite square.
+		return aShovelSelected && mBoard->ToolHitTest(aBoardX, aBoardY) != nullptr;
+	}
+
+	SeedType aSeedType = SeedType::SEED_NONE;
+	HitResult aSeedBankHit{};
+	if (mBoard->mSeedBank &&
+		mBoard->mSeedBank->MouseHitTest(aBoardX, aBoardY, &aSeedBankHit) &&
+		aSeedBankHit.mObjectType == GameObjectType::OBJECT_TYPE_SEEDPACKET)
+	{
+		return false;
+	}
+	if (aLanGame)
+	{
+		if (mLocalLanSeedBankIndex < 0 || !mBoard->mSeedBank ||
+			mLocalLanSeedBankIndex >= mBoard->mSeedBank->mNumPackets)
+		{
+			return false;
+		}
+		SeedPacket& aPacket = mBoard->mSeedBank->mSeedPackets[mLocalLanSeedBankIndex];
+		aSeedType = aPacket.mPacketType == SeedType::SEED_IMITATER ?
+			aPacket.mImitaterType : aPacket.mPacketType;
+	}
+	else
+	{
+		if (!mBoard->IsPlantInCursor())
+			return false;
+		aSeedType = mBoard->GetSeedTypeInCursor();
+	}
+
+	int aGridX = mBoard->PlantingPixelToGridX(aBoardX, aBoardY, aSeedType);
+	int aGridY = mBoard->PlantingPixelToGridY(aBoardX, aBoardY, aSeedType);
+	if (aGridX < 0 || aGridX >= MAX_GRID_SIZE_X ||
+		aGridY < 0 || aGridY >= MAX_GRID_SIZE_Y)
+	{
+		return false;
+	}
+
+	// Reuse the game's own placement rule.  This rejects occupied ordinary
+	// squares while still allowing flowerpots, lily pads, pumpkins, upgrades,
+	// and other combinations that the active ruleset explicitly permits.
+	return IsIZombieLevel() ||
+		mBoard->CanPlantAt(aGridX, aGridY, aSeedType) == PlantingReason::PLANTING_OK;
+}
+
 bool LawnApp::LocalMouseButton(int theX, int theY, int theClickCount, bool theDown)
 {
 	LocalMouseMove(theX, theY);

@@ -536,6 +536,9 @@ public:
 	virtual bool			DebugKeyDown(int theKey);
 	virtual void			LocalMouseMove(int theX, int theY);
 	virtual bool			LocalMouseButton(int theX, int theY, int theClickCount, bool theDown);
+	virtual void			LocalTouchStart(int theX, int theY);
+	virtual void			LocalTouchMove(int theX, int theY);
+	virtual bool			LocalTouchEnd(int theX, int theY);
 	virtual void			CloseRequestAsync();
 	void					InitInput();
 	bool					StartTextInput(std::string& theInput); // set theInput and return true if using soft keyboard capability and user pressed OK (e.g. Switch libnx swkbd)
