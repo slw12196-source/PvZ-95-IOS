@@ -916,8 +916,8 @@ int main()
 	{
 		for (bool anOriginalValue : {false, true})
 		{
-			ExpectEqual("PvZ 95 Grave Buster warning follows grave presence",
-				ShouldWarnGraveBusterForLevel(aStageHasGraveStones, anOriginalValue), aStageHasGraveStones);
+			ExpectEqual("PvZ 95 Grave Buster warning only when graves are absent",
+				ShouldWarnGraveBusterForLevel(aStageHasGraveStones, anOriginalValue), !aStageHasGraveStones);
 		}
 	}
 	ExpectEqual("PvZ 95 radius non-burn damage", ResolveKillAllZombiesInRadiusNonBurnDamage(1800), 2400);
