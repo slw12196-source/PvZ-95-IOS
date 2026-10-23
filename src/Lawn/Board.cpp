@@ -1113,7 +1113,17 @@ void Board::PickBackground()
 		}
 	}
 
-	MTRand aLevelRNG(GetLevelRandSeed());
+	// Match the iOS night-grave patch in maintainable source form: only
+	// Adventure 2-1..2-10 gets a fresh local seed on every board start/restart.
+	// Other modes retain their original deterministic level seed, and LAN always
+	// uses the shared deterministic seed so peers cannot diverge.
+	unsigned long aGraveSeed = GetLevelRandSeed();
+	if (!mApp->IsLanGameplayActive() && mApp->IsAdventureMode() &&
+		mLevel >= 11 && mLevel <= 20)
+	{
+		aGraveSeed = static_cast<unsigned long>(Rand());
+	}
+	MTRand aLevelRNG(aGraveSeed);
 	if (StageHasGraveStones())
 	{
 		if (mApp->mGameMode == GameMode::GAMEMODE_CHALLENGE_GRAVE_DANGER)
@@ -1179,7 +1189,8 @@ void Board::PickBackground()
 			}
 		}
 	}
-	PickSpecialGraveStone();
+	if (GetGraveStoneCount() > 0)
+		PickSpecialGraveStone();
 }
 
 void Board::InitZombieWavesForLevel(int theForLevel)
@@ -3156,6 +3167,11 @@ void Board::UpdateMousePosition()
 			continue;
 		aPlant->mHighlighted = false;
 	}
+	for (GridItem* aGridItem : mGridItems)
+	{
+		if (!aGridItem->mDead && aGridItem->mGridItemType == GridItemType::GRIDITEM_GRAVESTONE)
+			aGridItem->mHighlighted = false;
+	}
 
 	SeedType aCursorSeedType = GetSeedTypeInCursor();
 	int aMouseX = mApp->mWidgetManager->mLastMouseX - mX;
@@ -3209,8 +3225,21 @@ void Board::UpdateMousePosition()
 		return;
 	}
 
+	// Grave Buster uses a grid item rather than a Plant as its target, so give
+	// graves the same target highlight feedback as the other special plants.
+	if (aCursorSeedType == SeedType::SEED_GRAVEBUSTER)
+	{
+		int aGridX = PlantingPixelToGridX(aMouseX, aMouseY, aCursorSeedType);
+		int aGridY = PlantingPixelToGridY(aMouseX, aMouseY, aCursorSeedType);
+		if (aGridX >= 0 && aGridX < MAX_GRID_SIZE_X && aGridY >= 0 && aGridY < MAX_GRID_SIZE_Y)
+		{
+			GridItem* aGrave = GetGraveStoneAt(aGridX, aGridY);
+			if (aGrave && CanPlantAt(aGridX, aGridY, aCursorSeedType) == PlantingReason::PLANTING_OK)
+				aGrave->mHighlighted = true;
+		}
+	}
 	// coffee bean and wall-nut first aid highlighting
-	if (aCursorSeedType == SeedType::SEED_INSTANT_COFFEE)
+	else if (aCursorSeedType == SeedType::SEED_INSTANT_COFFEE)
 	{
 		int aGridX = PlantingPixelToGridX(mApp->mWidgetManager->mLastMouseX, mApp->mWidgetManager->mLastMouseY, aCursorSeedType);
 		int aGridY = PlantingPixelToGridY(mApp->mWidgetManager->mLastMouseX, mApp->mWidgetManager->mLastMouseY, aCursorSeedType);

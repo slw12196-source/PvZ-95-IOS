@@ -195,6 +195,17 @@ void GridItem::DrawGraveStone(Graphics* g)
 	int y = mBoard->GridToPixelY(mGridX, mGridY) + aCelHeight + aGridCelOffsetY - 9;
 	g->DrawImage(IMAGE_TOMBSTONES, x, y - aVisibleHeight + aExtraTopClip, aSrcRect);
 	g->DrawImage(IMAGE_TOMBSTONE_MOUNDS, x, y - aVisibleHeightDirt, aSrcRectDirt);
+
+	if (mHighlighted)
+	{
+		g->SetDrawMode(Graphics::DRAWMODE_ADDITIVE);
+		g->SetColorizeImages(true);
+		g->SetColor(Color(255, 255, 255, 160));
+		g->DrawImage(IMAGE_TOMBSTONES, x, y - aVisibleHeight + aExtraTopClip, aSrcRect);
+		g->DrawImage(IMAGE_TOMBSTONE_MOUNDS, x, y - aVisibleHeightDirt, aSrcRectDirt);
+		g->SetColorizeImages(false);
+		g->SetDrawMode(Graphics::DRAWMODE_NORMAL);
+	}
 }
 
 void GridItem::DrawStinky(Graphics* g)
