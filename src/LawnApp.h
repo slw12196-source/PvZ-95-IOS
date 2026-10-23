@@ -93,9 +93,10 @@ public:
 	{
 		NONE,
 		SEED_PACKET,
-		SHOVEL,
+		USABLE_SEED_PACKET,
+		TOOL,
 		SELECTED_PLANT,
-		SELECTED_SHOVEL
+		SELECTED_TOOL
 	};
 
 	Board*							mBoard;
@@ -200,7 +201,7 @@ public:
 	int                             mTouchLastX{};
 	int                             mTouchLastY{};
 	bool                            mTouchHasDragged{};
-	bool                            mTouchLanUsablePlantingValid{};
+	bool                            mTouchSuppressPrimaryDown{};
 	std::vector<CoinID>             mTouchCollectedCoinIds;
 	bool                            mApplyingLanSessionStart{};
 	bool                            mLanWaitingForBegin{};

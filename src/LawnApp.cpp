@@ -1936,6 +1936,37 @@ void LawnApp::LocalMouseMove(int theX, int theY)
 	mLocalLanCursorVisible = true;
 }
 
+namespace
+{
+bool IsMobileDragToolCursor(CursorType theCursorType)
+{
+	return theCursorType == CursorType::CURSOR_TYPE_SHOVEL ||
+		theCursorType == CursorType::CURSOR_TYPE_WATERING_CAN ||
+		theCursorType == CursorType::CURSOR_TYPE_FERTILIZER ||
+		theCursorType == CursorType::CURSOR_TYPE_BUG_SPRAY ||
+		theCursorType == CursorType::CURSOR_TYPE_PHONOGRAPH ||
+		theCursorType == CursorType::CURSOR_TYPE_CHOCOLATE ||
+		theCursorType == CursorType::CURSOR_TYPE_GLOVE ||
+		theCursorType == CursorType::CURSOR_TYPE_MONEY_SIGN ||
+		theCursorType == CursorType::CURSOR_TYPE_WHEEELBARROW ||
+		theCursorType == CursorType::CURSOR_TYPE_TREE_FOOD;
+}
+
+bool IsMobileDragToolObject(GameObjectType theObjectType)
+{
+	return theObjectType == GameObjectType::OBJECT_TYPE_SHOVEL ||
+		theObjectType == GameObjectType::OBJECT_TYPE_WATERING_CAN ||
+		theObjectType == GameObjectType::OBJECT_TYPE_FERTILIZER ||
+		theObjectType == GameObjectType::OBJECT_TYPE_BUG_SPRAY ||
+		theObjectType == GameObjectType::OBJECT_TYPE_PHONOGRAPH ||
+		theObjectType == GameObjectType::OBJECT_TYPE_CHOCOLATE ||
+		theObjectType == GameObjectType::OBJECT_TYPE_GLOVE ||
+		theObjectType == GameObjectType::OBJECT_TYPE_MONEY_SIGN ||
+		theObjectType == GameObjectType::OBJECT_TYPE_WHEELBARROW ||
+		theObjectType == GameObjectType::OBJECT_TYPE_TREE_FOOD;
+}
+}
+
 void LawnApp::LocalTouchStart(int theX, int theY)
 {
 	mTouchPointerDown = true;
@@ -1945,7 +1976,7 @@ void LawnApp::LocalTouchStart(int theX, int theY)
 	mTouchLastX = theX;
 	mTouchLastY = theY;
 	mTouchHasDragged = false;
-	mTouchLanUsablePlantingValid = false;
+	mTouchSuppressPrimaryDown = false;
 	mTouchCollectedCoinIds.clear();
 
 	if (!mBoard)
@@ -1956,36 +1987,23 @@ void LawnApp::LocalTouchStart(int theX, int theY)
 	bool aLanGame = mLanSessionBegun &&
 		(aMode == LanMode::HOSTING || aMode == LanMode::CONNECTED);
 	PlayerId aLocalPlayerId = mSharedInputState.GetLocalPlayerId();
+
+	// An object that is already selected must not execute on touch-down.  The
+	// same gesture may become a drag a few pixels later, so defer the action to
+	// touch-up.  A stationary gesture still behaves exactly like a normal tap.
 	if (aLanGame)
 	{
 		CoinID aHeldUsableSeedId = mLanHeldUsableSeedCoinIds[aLocalPlayerId];
 		if (mLocalLanSeedBankIndex >= 0 || aHeldUsableSeedId != CoinID::COINID_NULL)
 		{
 			mTouchDragSource = TouchDragSource::SELECTED_PLANT;
-			// LAN usable seeds remain selected until their queued planting action is
-			// applied.  Remember a valid tap so TouchEnd does not enqueue a drop too.
-			if (aHeldUsableSeedId != CoinID::COINID_NULL && IsBoardInputAt(theX, theY))
-			{
-				Coin* aHeldCoin = mBoard->mCoins.DataArrayTryToGet(aHeldUsableSeedId);
-				if (aHeldCoin && !aHeldCoin->mDead &&
-					aHeldCoin->mType == CoinType::COIN_USABLE_SEED_PACKET)
-				{
-					int aBoardX = theX - mBoard->mX;
-					int aBoardY = theY - mBoard->mY;
-					SeedType aSeedType = aHeldCoin->mUsableSeedType;
-					int aGridX = mBoard->PlantingPixelToGridX(aBoardX, aBoardY, aSeedType);
-					int aGridY = mBoard->PlantingPixelToGridY(aBoardX, aBoardY, aSeedType);
-					mTouchLanUsablePlantingValid =
-						aGridX >= 0 && aGridX < MAX_GRID_SIZE_X &&
-						aGridY >= 0 && aGridY < MAX_GRID_SIZE_Y &&
-						mBoard->CanPlantAt(aGridX, aGridY, aSeedType) == PlantingReason::PLANTING_OK;
-				}
-			}
+			mTouchSuppressPrimaryDown = true;
 			return;
 		}
 		if (mLocalLanShovelSelected)
 		{
-			mTouchDragSource = TouchDragSource::SELECTED_SHOVEL;
+			mTouchDragSource = TouchDragSource::SELECTED_TOOL;
+			mTouchSuppressPrimaryDown = true;
 			return;
 		}
 		if (mLocalLanCobCannonPlantId != PlantID::PLANTID_NULL)
@@ -1994,15 +2012,19 @@ void LawnApp::LocalTouchStart(int theX, int theY)
 	else if (mBoard->IsPlantInCursor())
 	{
 		mTouchDragSource = TouchDragSource::SELECTED_PLANT;
+		mTouchSuppressPrimaryDown = true;
 		return;
 	}
-	else if (mBoard->mCursorObject->mCursorType == CursorType::CURSOR_TYPE_SHOVEL)
+	else if (IsMobileDragToolCursor(mBoard->mCursorObject->mCursorType))
 	{
-		mTouchDragSource = TouchDragSource::SELECTED_SHOVEL;
+		mTouchDragSource = TouchDragSource::SELECTED_TOOL;
+		mTouchSuppressPrimaryDown = true;
 		return;
 	}
 	else if (mBoard->mCursorObject->mCursorType != CursorType::CURSOR_TYPE_NORMAL)
+	{
 		return;
+	}
 
 	if (!IsBoardInputAt(theX, theY))
 		return;
@@ -2015,15 +2037,25 @@ void LawnApp::LocalTouchStart(int theX, int theY)
 	{
 		mTouchDragSource = TouchDragSource::SEED_PACKET;
 	}
-	else if (aHitResult.mObjectType == GameObjectType::OBJECT_TYPE_SHOVEL)
+	else if (IsMobileDragToolObject(aHitResult.mObjectType))
 	{
-		mTouchDragSource = TouchDragSource::SHOVEL;
+		mTouchDragSource = TouchDragSource::TOOL;
 	}
 	else if (aHitResult.mObjectType == GameObjectType::OBJECT_TYPE_COIN)
 	{
 		Coin* aCoin = static_cast<Coin*>(aHitResult.mObject);
-		mTouchCollectedCoinIds.push_back(
-			static_cast<CoinID>(mBoard->mCoins.DataArrayGetID(aCoin)));
+		CoinID aCoinId = static_cast<CoinID>(mBoard->mCoins.DataArrayGetID(aCoin));
+		if (aCoin->mType == CoinType::COIN_USABLE_SEED_PACKET)
+		{
+			// Vasebreaker/Seed Rain cards use the exact same select-or-drag
+			// contract as a seed-bank packet.  The normal MouseDown below still
+			// picks the card up; touch-up decides whether a drag also plants it.
+			mTouchDragSource = TouchDragSource::USABLE_SEED_PACKET;
+		}
+		else
+		{
+			mTouchCollectedCoinIds.push_back(aCoinId);
+		}
 	}
 }
 
@@ -2039,8 +2071,8 @@ void LawnApp::LocalTouchMove(int theX, int theY)
 	mTouchLastX = theX;
 	mTouchLastY = theY;
 
-	// A seed packet or shovel drag owns the gesture until release.  Currency
-	// collection is only active for a free swipe with the ordinary cursor.
+	// A card/tool drag owns the gesture until release.  Currency collection is
+	// only active for a free swipe with the ordinary cursor.
 	if (!mBoard || mTouchDragSource != TouchDragSource::NONE ||
 		mBoard->mCursorObject->mCursorType != CursorType::CURSOR_TYPE_NORMAL)
 	{
@@ -2069,15 +2101,16 @@ void LawnApp::LocalTouchMove(int theX, int theY)
 		aSteps = 1;
 
 	// Interpolate the whole segment so a fast swipe cannot jump over a drop
-	// between two SDL motion samples.  Coin::MouseHitTest retains the original
-	// per-drop hit boxes and Coin::MouseDown retains all original collection rules.
+	// between two SDL motion samples.  Usable seed cards are deliberately not
+	// swept up here: touching one starts a card drag instead.
 	for (int aStep = 1; aStep <= aSteps; ++aStep)
 	{
 		int aSampleX = aStartX + aDeltaX * aStep / aSteps - mBoard->mX;
 		int aSampleY = aStartY + aDeltaY * aStep / aSteps - mBoard->mY;
 		for (Coin* aCoin : mBoard->mCoins)
 		{
-			if (aCoin->mDead || aCoin->mIsBeingCollected)
+			if (aCoin->mDead || aCoin->mIsBeingCollected ||
+				aCoin->mType == CoinType::COIN_USABLE_SEED_PACKET)
 				continue;
 
 			HitResult aCoinHit{};
@@ -2103,11 +2136,7 @@ void LawnApp::LocalTouchMove(int theX, int theY)
 				aCollected = aCoin->mIsBeingCollected || aCoin->mDead;
 			}
 			if (aCollected)
-			{
 				mTouchCollectedCoinIds.push_back(aCoinId);
-				if (aCoin->mType == CoinType::COIN_USABLE_SEED_PACKET)
-					return;
-			}
 		}
 	}
 }
@@ -2118,6 +2147,7 @@ bool LawnApp::LocalTouchEnd(int theX, int theY)
 		return false;
 
 	mTouchPointerDown = false;
+	mTouchSuppressPrimaryDown = false;
 	if (std::abs(theX - mTouchStartX) >= 8 || std::abs(theY - mTouchStartY) >= 8)
 		mTouchHasDragged = true;
 	TouchDragSource aDragSource = mTouchDragSource;
@@ -2130,12 +2160,13 @@ bool LawnApp::LocalTouchEnd(int theX, int theY)
 	LanMode aMode = mLanCoordinator ? mLanCoordinator->GetMode() : LanMode::OFFLINE;
 	bool aLanGame = mLanSessionBegun &&
 		(aMode == LanMode::HOSTING || aMode == LanMode::CONNECTED);
+	PlayerId aLocalPlayerId = mSharedInputState.GetLocalPlayerId();
+
 	auto CancelPlantSelection = [&]()
 	{
 		bool aCanceled = false;
 		if (aLanGame)
 		{
-			PlayerId aLocalPlayerId = mSharedInputState.GetLocalPlayerId();
 			CoinID aHeldUsableSeedId = mLanHeldUsableSeedCoinIds[aLocalPlayerId];
 			if (aHeldUsableSeedId != CoinID::COINID_NULL)
 			{
@@ -2157,7 +2188,7 @@ bool LawnApp::LocalTouchEnd(int theX, int theY)
 		if (aCanceled)
 			PlayFoley(FoleyType::FOLEY_DROP);
 	};
-	auto CancelShovelSelection = [&]()
+	auto CancelToolSelection = [&]()
 	{
 		bool aCanceled = false;
 		if (aLanGame)
@@ -2165,7 +2196,7 @@ bool LawnApp::LocalTouchEnd(int theX, int theY)
 			aCanceled = mLocalLanShovelSelected;
 			mLocalLanShovelSelected = false;
 		}
-		else if (mBoard->mCursorObject->mCursorType == CursorType::CURSOR_TYPE_SHOVEL)
+		else if (IsMobileDragToolCursor(mBoard->mCursorObject->mCursorType))
 		{
 			mBoard->ClearCursor();
 			aCanceled = true;
@@ -2174,74 +2205,84 @@ bool LawnApp::LocalTouchEnd(int theX, int theY)
 			PlayFoley(FoleyType::FOLEY_DROP);
 	};
 
-	// A tap with an already selected plant/tool is dispatched on touch-down.
-	// If the original game left the selection active, the target was invalid or
-	// outside the board, so mobile interaction treats touch-up as cancellation.
-	if (aDragSource == TouchDragSource::SELECTED_PLANT)
-	{
-		if (!mTouchLanUsablePlantingValid)
-			CancelPlantSelection();
-		mTouchLanUsablePlantingValid = false;
-		return false;
-	}
-	if (aDragSource == TouchDragSource::SELECTED_SHOVEL)
-	{
-		CancelShovelSelection();
-		return false;
-	}
-
 	int aBoardX = theX - mBoard->mX;
 	int aBoardY = theY - mBoard->mY;
-	if (aBoardX < 0 || aBoardX >= mBoard->mWidth ||
-		aBoardY < 0 || aBoardY >= mBoard->mHeight)
+	bool aInsideBoard = aBoardX >= 0 && aBoardX < mBoard->mWidth &&
+		aBoardY >= 0 && aBoardY < mBoard->mHeight;
+
+	if (aDragSource == TouchDragSource::TOOL || aDragSource == TouchDragSource::SELECTED_TOOL)
 	{
-		if (aDragSource == TouchDragSource::SHOVEL)
-			CancelShovelSelection();
-		else
-			CancelPlantSelection();
+		// A tap on a tool button only picks it up.  Dragging from the button, or
+		// any gesture that begins with a tool already selected, applies it exactly
+		// once at the release point.  Board/ZenGarden retain all retail target rules.
+		if (aDragSource == TouchDragSource::TOOL && !mTouchHasDragged)
+			return false;
+		bool aToolSelected = aLanGame ? mLocalLanShovelSelected :
+			IsMobileDragToolCursor(mBoard->mCursorObject->mCursorType);
+		if (!aInsideBoard || !aToolSelected)
+		{
+			CancelToolSelection();
+			return false;
+		}
+		return true;
+	}
+
+	// A seed-bank card or a dropped Vasebreaker/Seed Rain card is only selected
+	// by a stationary tap.  If it was dragged, use the release point as the sole
+	// planting action.  An already-selected plant always uses this release path,
+	// for both tap-to-place and drag-to-place.
+	bool aStartedFromCard = aDragSource == TouchDragSource::SEED_PACKET ||
+		aDragSource == TouchDragSource::USABLE_SEED_PACKET;
+	if (aStartedFromCard && !mTouchHasDragged)
 		return false;
-	}
 
-	if (aDragSource == TouchDragSource::SHOVEL)
+	if (!aInsideBoard)
 	{
-		// A simple tap only selects the shovel.  Cancellation is reserved for an
-		// actual drag that ends without a plant under it.
-		if (!mTouchHasDragged)
-			return false;
-		bool aShovelSelected = aLanGame ? mLocalLanShovelSelected :
-			mBoard->mCursorObject->mCursorType == CursorType::CURSOR_TYPE_SHOVEL;
-		// ToolHitTest uses TOPPLANT_DIGGING_ORDER, preserving the retail order for
-		// pumpkin/normal plant/flowerpot and every other composite square.
-		bool aValidTarget = aShovelSelected && mBoard->ToolHitTest(aBoardX, aBoardY) != nullptr;
-		if (!aValidTarget)
-			CancelShovelSelection();
-		return aValidTarget;
-	}
-
-	SeedType aSeedType = SeedType::SEED_NONE;
-	HitResult aSeedBankHit{};
-	if (mBoard->mSeedBank &&
-		mBoard->mSeedBank->MouseHitTest(aBoardX, aBoardY, &aSeedBankHit) &&
-		aSeedBankHit.mObjectType == GameObjectType::OBJECT_TYPE_SEEDPACKET)
-	{
-		// Keep click-to-select intact.  Only a card that was genuinely dragged
-		// away and brought back to the bank is canceled here.
-		if (!mTouchHasDragged)
-			return false;
 		CancelPlantSelection();
 		return false;
 	}
-	if (aLanGame)
+
+	// Returning a seed-bank drag to the bank cancels the drag instead of leaving
+	// a floating card.  A simple tap was handled above and remains selected.
+	if (aDragSource == TouchDragSource::SEED_PACKET)
 	{
-		if (mLocalLanSeedBankIndex < 0 || !mBoard->mSeedBank ||
-			mLocalLanSeedBankIndex >= mBoard->mSeedBank->mNumPackets)
+		HitResult aSeedBankHit{};
+		if (mBoard->mSeedBank &&
+			mBoard->mSeedBank->MouseHitTest(aBoardX, aBoardY, &aSeedBankHit) &&
+			aSeedBankHit.mObjectType == GameObjectType::OBJECT_TYPE_SEEDPACKET)
 		{
 			CancelPlantSelection();
 			return false;
 		}
-		SeedPacket& aPacket = mBoard->mSeedBank->mSeedPackets[mLocalLanSeedBankIndex];
-		aSeedType = aPacket.mPacketType == SeedType::SEED_IMITATER ?
-			aPacket.mImitaterType : aPacket.mPacketType;
+	}
+
+	SeedType aSeedType = SeedType::SEED_NONE;
+	if (aLanGame)
+	{
+		CoinID aHeldUsableSeedId = mLanHeldUsableSeedCoinIds[aLocalPlayerId];
+		if (aHeldUsableSeedId != CoinID::COINID_NULL)
+		{
+			Coin* aHeldCoin = mBoard->mCoins.DataArrayTryToGet(aHeldUsableSeedId);
+			if (!aHeldCoin || aHeldCoin->mDead ||
+				aHeldCoin->mType != CoinType::COIN_USABLE_SEED_PACKET)
+			{
+				CancelPlantSelection();
+				return false;
+			}
+			aSeedType = aHeldCoin->mUsableSeedType;
+		}
+		else if (mLocalLanSeedBankIndex >= 0 && mBoard->mSeedBank &&
+			mLocalLanSeedBankIndex < mBoard->mSeedBank->mNumPackets)
+		{
+			SeedPacket& aPacket = mBoard->mSeedBank->mSeedPackets[mLocalLanSeedBankIndex];
+			aSeedType = aPacket.mPacketType == SeedType::SEED_IMITATER ?
+				aPacket.mImitaterType : aPacket.mPacketType;
+		}
+		else
+		{
+			CancelPlantSelection();
+			return false;
+		}
 	}
 	else
 	{
@@ -2259,19 +2300,27 @@ bool LawnApp::LocalTouchEnd(int theX, int theY)
 		return false;
 	}
 
-	// Reuse the game's own placement rule.  This rejects occupied ordinary
-	// squares while still allowing flowerpots, lily pads, pumpkins, upgrades,
-	// and other combinations that the active ruleset explicitly permits.
+	// Keep the original CanPlantAt rules.  Occupied normal squares are rejected,
+	// while pots, lily pads, pumpkins, upgrades and every other legal composite
+	// placement remain valid.  Invalid touch placement explicitly cancels.
 	bool aValidTarget = IsIZombieLevel() ||
 		mBoard->CanPlantAt(aGridX, aGridY, aSeedType) == PlantingReason::PLANTING_OK;
 	if (!aValidTarget)
+	{
 		CancelPlantSelection();
-	return aValidTarget;
+		return false;
+	}
+	return true;
 }
 
 bool LawnApp::LocalMouseButton(int theX, int theY, int theClickCount, bool theDown)
 {
 	LocalMouseMove(theX, theY);
+	// iOS touch gestures that begin with an already-selected plant/tool are
+	// resolved on touch-up.  Swallow the physical touch-down so Board::MouseDown
+	// cannot plant/use at the gesture origin before we know whether it is a drag.
+	if (theDown && theClickCount == 1 && mTouchPointerDown && mTouchSuppressPrimaryDown)
+		return true;
 	PvzMultiplayer::LanMode aMode = mLanCoordinator->GetMode();
 	bool aHasGameInput = mBoard || mSeedChooserScreen;
 	bool aBoardInput = aHasGameInput && IsBoardInputAt(theX, theY);
