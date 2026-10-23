@@ -1190,7 +1190,10 @@ namespace PvzRules
 
 	bool ShouldWarnGraveBusterForLevel(bool theStageHasGraveStones, bool theOriginalValue)
 	{
-		return gActiveRuleset == RulesetId::PVZ95 ? theStageHasGraveStones : theOriginalValue;
+		// Grave Buster is only "not recommended" when the level has no graves.
+		// The old PvZ95 compatibility branch returned the opposite value and
+		// incorrectly dimmed the packet on night levels that actually had graves.
+		return gActiveRuleset == RulesetId::PVZ95 ? !theStageHasGraveStones : theOriginalValue;
 	}
 
 	int ResolveKillAllZombiesInRadiusNonBurnDamage(int theOriginalValue)
